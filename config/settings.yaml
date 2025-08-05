@@ -1,0 +1,67 @@
+# Austrian Efficiency Configuration for NotionMCP
+# Vienna timezone and German/Japanese character support
+
+server:
+  name: "Notion Workspace Management MCP 🗃️"
+  description: "Comprehensive Notion workspace management with Austrian efficiency"
+  version: "1.0.0"
+  timezone: "Europe/Vienna"
+  language: "de"
+  author: "Sandra (Vienna, Austria)"
+
+# Performance tuning for budget awareness (~€100/month)
+performance:
+  max_requests_per_minute: 60
+  default_page_size: 50
+  max_page_size: 100
+  cache_duration_seconds: 300
+  timeout_seconds: 30
+  retry_attempts: 3
+
+# Austrian context features
+localization:
+  date_format: "DD.MM.YYYY"
+  time_format: "HH:MM"
+  timezone: "Europe/Vienna"
+  currency: "EUR"
+  language_support:
+    - "de"  # German
+    - "en"  # English
+    - "ja"  # Japanese (weeb support)
+
+# Feature flags for Austrian efficiency
+features:
+  enable_ai_features: true
+  enable_webhooks: true
+  enable_bulk_operations: true
+  enable_export: true
+  enable_collaboration: true
+  strict_error_handling: true
+  budget_monitoring: true
+
+# Academic and research optimizations
+academic:
+  citation_formats:
+    - "APA"
+    - "MLA" 
+    - "Chicago"
+    - "IEEE"
+  research_templates: true
+  bibliography_support: true
+  note_taking_features: true
+
+# Weeb-friendly features
+weeb:
+  japanese_support: true
+  anime_database_templates: true
+  manga_tracking: true
+  language_learning_tools: true
+
+# Logging configuration (Austrian efficiency)
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  date_format: "%d.%m.%Y %H:%M:%S"
+  file_rotation: true
+  max_file_size_mb: 10
+  backup_count: 5

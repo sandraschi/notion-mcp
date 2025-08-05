@@ -1,0 +1,137 @@
+# Notion Integration Configuration Templates
+# Austrian Efficiency for Development, Production, and Vienna Context
+
+# Development Environment (local testing)
+development:
+  notion:
+    api_version: "2022-06-28"
+    timeout_ms: 30000
+    rate_limit_respect: true
+    debug_mode: true
+  
+  database_defaults:
+    page_size: 10
+    include_metadata: true
+    auto_retry: true
+  
+  vienna_context:
+    timezone: "Europe/Vienna"
+    date_format: "DD.MM.YYYY"
+    language: "de"
+
+# Production Environment (live deployment)
+production:
+  notion:
+    api_version: "2022-06-28"
+    timeout_ms: 60000
+    rate_limit_respect: true
+    debug_mode: false
+    connection_pooling: true
+  
+  database_defaults:
+    page_size: 100
+    include_metadata: false
+    auto_retry: true
+    batch_size: 50
+  
+  performance:
+    cache_enabled: true
+    cache_ttl: 600
+    concurrent_requests: 5
+    
+  vienna_context:
+    timezone: "Europe/Vienna"
+    date_format: "DD.MM.YYYY"
+    language: "de"
+
+# Academic Research Configuration
+academic:
+  templates:
+    research_database:
+      properties:
+        Title: "title"
+        Authors: "multi_select"
+        Publication_Date: "date"
+        Status: "select"
+        Rating: "number"
+        Notes: "rich_text"
+        Tags: "multi_select"
+        
+    project_tracker:
+      properties:
+        Project_Name: "title"
+        Status: "select"
+        Priority: "select"
+        Due_Date: "date"
+        Assignee: "person"
+        Progress: "number"
+        
+    bibliography:
+      properties:
+        Citation_Key: "title"
+        Author: "rich_text"
+        Title: "rich_text"
+        Year: "number"
+        Journal: "rich_text"
+        DOI: "url"
+        
+# Weeb Organization Templates
+weeb:
+  anime_database:
+    properties:
+      Title: "title"
+      Status: "select"  # Watching, Completed, Plan to Watch, Dropped
+      Rating: "number"
+      Episodes_Watched: "number"
+      Total_Episodes: "number"
+      Genre: "multi_select"
+      Studio: "rich_text"
+      Season: "rich_text"
+      Notes: "rich_text"
+      
+  manga_database:
+    properties:
+      Title: "title"
+      Status: "select"  # Reading, Completed, Plan to Read, Dropped
+      Rating: "number"
+      Chapters_Read: "number"
+      Total_Chapters: "number"
+      Genre: "multi_select"
+      Author: "rich_text"
+      Publisher: "rich_text"
+      
+  japanese_learning:
+    properties:
+      Word: "title"
+      Hiragana: "rich_text"
+      Katakana: "rich_text" 
+      Kanji: "rich_text"
+      Meaning: "rich_text"
+      Example: "rich_text"
+      JLPT_Level: "select"
+      Learned: "checkbox"
+
+# Austrian Efficiency Defaults
+defaults:
+  error_handling:
+    retry_count: 3
+    retry_delay_seconds: 1
+    log_errors: true
+    user_friendly_messages: true
+    
+  date_time:
+    timezone: "Europe/Vienna"
+    format: "DD.MM.YYYY HH:MM"
+    locale: "de_AT"
+    
+  content:
+    encoding: "UTF-8"
+    german_chars: true
+    japanese_chars: true
+    max_content_length: 2000000  # 2MB limit
+    
+  budget_awareness:
+    monitor_api_usage: true
+    warn_at_threshold: 80
+    monthly_budget_eur: 100
+    cost_per_request: 0.001  # Estimated
