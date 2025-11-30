@@ -1,0 +1,38 @@
+{
+  "name": "notion-mcp",
+  "version": "1.0.0",
+  "description": "FastMCP server for comprehensive Notion workspace management - 19 tools for pages, databases, collaboration, and automation",
+  "author": "Sandra",
+  "license": "MIT",
+  "repository": "https://github.com/sandraschi/notion-mcp",
+  "tools": [
+    "create_page",
+    "update_page",
+    "get_page_content",
+    "search_pages",
+    "archive_page",
+    "create_database",
+    "query_database",
+    "create_database_entry",
+    "update_database_entry",
+    "get_database_schema",
+    "bulk_import_data",
+    "add_comment",
+    "get_comments",
+    "get_workspace_users",
+    "setup_automation",
+    "sync_external_data",
+    "generate_ai_summary",
+    "export_workspace_data",
+    "test_connection"
+  ],
+  "entry": "server.py",
+  "python_version": ">=3.11",
+  "dependencies": {
+    "fastmcp": ">=2.13.0",
+    "notion-client": ">=2.2.0",
+    "pydantic": ">=2.0.0",
+    "pyyaml": ">=6.0"
+  }
+}
+
