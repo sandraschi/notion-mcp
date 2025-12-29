@@ -3,9 +3,9 @@
   "mcpServers": {
     "notion-mcp": {
       "command": "python",
-      "args": ["-m", "server"],
+      "args": ["server.py"],
       "env": {
-        "PYTHONPATH": "${PWD}",
+        "PYTHONPATH": "${workspaceFolder}/notion-mcp",
         "PYTHONUNBUFFERED": "1"
       },
       "description": "FastMCP 2.14.1 compatible MCP server for comprehensive Notion workspace management. 19 tools including pages, databases, collaboration, automation, and AI integration with Austrian efficiency.",

@@ -121,24 +121,42 @@ ERROR HANDLING:
 config = load_config()
 
 # Initialize Notion client with Austrian efficiency
-try:
-    notion_client = NotionClient(
-        token=os.getenv("NOTION_TOKEN"),
-        version=os.getenv("NOTION_VERSION", "2022-06-28"),
-        timeout=int(os.getenv("NOTION_TIMEOUT", "30"))
-    )
+# Note: Initialization happens lazily to avoid import-time failures
+notion_client = None
+page_manager = None
+db_manager = None
+collab_manager = None
+automation_manager = None
+
+def initialize_notion_client():
+    """Initialize Notion client and managers."""
+    global notion_client, page_manager, db_manager, collab_manager, automation_manager
     
-    # Initialize managers
-    page_manager = PageManager(notion_client)
-    db_manager = DatabaseManager(notion_client)
-    collab_manager = CollaborationManager(notion_client)
-    automation_manager = AutomationManager(notion_client)
+    if notion_client is not None:
+        return  # Already initialized
     
-    logger.info("Notion client initialized successfully", message="Austrian efficiency activated")
-except Exception as e:
-    logger.error("Failed to initialize Notion client", error=str(e))
-    logger.error("Please check your NOTION_TOKEN environment variable")
-    raise
+    # Check for NOTION_TOKEN
+    token = os.getenv("NOTION_TOKEN")
+    if not token:
+        raise ValueError("NOTION_TOKEN environment variable is required. Get your integration token from: https://www.notion.so/my-integrations")
+    
+    try:
+        notion_client = NotionClient(
+            token=token,
+            version=os.getenv("NOTION_VERSION", "2022-06-28"),
+            timeout=int(os.getenv("NOTION_TIMEOUT", "30"))
+        )
+        
+        # Initialize managers
+        page_manager = PageManager(notion_client)
+        db_manager = DatabaseManager(notion_client)
+        collab_manager = CollaborationManager(notion_client)
+        automation_manager = AutomationManager(notion_client)
+        
+        logger.info("Notion client initialized successfully", message="Austrian efficiency activated")
+    except Exception as e:
+        logger.error("Failed to initialize Notion client", error=str(e))
+        raise
 
 # 📄 Page Management Tools (5 tools)
 
@@ -152,6 +170,7 @@ async def create_page(
 ) -> Dict[str, Any]:
     """Create a new Notion page with content, properties, and Austrian efficiency."""
     try:
+        initialize_notion_client()  # Ensure client is initialized
         result = await page_manager.create_page(
             title=title,
             content=content,
@@ -704,11 +723,9 @@ async def main() -> None:
                 server_name=config.get('server', {}).get('name', 'NotionMCP'),
                 timezone=config.get('server', {}).get('timezone', 'Europe/Vienna'))
     
-    # Check required environment variables
-    if not os.getenv("NOTION_TOKEN"):
-        logger.error("NOTION_TOKEN environment variable is required")
-        logger.error("Get your integration token from: https://www.notion.so/my-integrations")
-        sys.exit(1)
+    # Note: Notion client initialization happens lazily when tools are called
+    # This allows the server to start even if NOTION_TOKEN isn't set yet
+    # Tools will initialize and return appropriate errors if token is missing
     
     # Run the FastMCP 2.14.1 server
     await app.run_stdio_async()
