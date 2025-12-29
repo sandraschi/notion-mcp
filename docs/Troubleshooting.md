@@ -2,6 +2,8 @@
 
 **Austrian efficiency diagnostics and problem solving**
 
+**Version: 1.0.1** - Updated 2025-12-29
+
 ## 🚨 Quick Diagnosis (30 seconds)
 
 Run this command for instant health check:
@@ -22,6 +24,46 @@ else:
 ```
 
 ## 🔧 Common Issues & Fixes
+
+### 0. Server Won't Start in Cursor IDE
+
+**Error:** Server fails to start or doesn't appear in Cursor MCP servers list
+
+**Austrian Direct Solutions:**
+
+1. **Check Cursor Configuration:**
+   - Open Cursor Settings > MCP Servers
+   - Verify `cwd` points to correct directory: `D:\Dev\repos\notion-mcp`
+   - Ensure `args` is `["server.py"]` (not `["-m", "server"]`)
+   - Check `NOTION_TOKEN` is set in `env` section
+
+2. **Verify Server Can Start Manually:**
+   ```powershell
+   cd D:\Dev\repos\notion-mcp
+   python server.py
+   ```
+   Server should start and wait for MCP protocol (no errors)
+
+3. **Check Python Path:**
+   ```powershell
+   python --version  # Should be 3.11+
+   where python      # Verify Python is in PATH
+   ```
+
+4. **Check Dependencies:**
+   ```powershell
+   cd D:\Dev\repos\notion-mcp
+   pip install -r requirements.txt
+   ```
+
+5. **Check Cursor Logs:**
+   - Open Cursor Developer Tools (Help > Toggle Developer Tools)
+   - Check Console tab for MCP server errors
+   - Look for import errors or missing dependencies
+
+**See Also:**
+- [CURSOR_FIX.md](../CURSOR_FIX.md) - Detailed Cursor setup guide
+- [CURSOR_MCP_CONFIG.md](../CURSOR_MCP_CONFIG.md) - Configuration examples
 
 ### 1. Authentication Errors
 
