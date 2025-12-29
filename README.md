@@ -2,9 +2,12 @@
 
 **FastMCP 2.14.1 Implementation with Austrian Efficiency 🇦🇹**
 
-**Status: Beta** - Actively developed, API may change
+**Status: Beta** - Actively developed, API may change  
+**Version: 1.0.1** - Latest: Cursor compatibility fixes
 
 A powerful MCP (Model Context Protocol) server for comprehensive Notion workspace management, built with Austrian efficiency for academic research, project organization, and weeb content management.
+
+> **Note**: For Cursor IDE setup, see [CURSOR_FIX.md](CURSOR_FIX.md) and [CURSOR_MCP_CONFIG.md](CURSOR_MCP_CONFIG.md)
 
 ## 🎯 Overview
 
@@ -24,9 +27,10 @@ NotionMCP provides 18 comprehensive tools for managing Notion workspaces through
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.11+
 - Notion account with integration token
-- Claude Desktop Pro with MCP support
+- Claude Desktop Pro with MCP support (or Cursor with MCP)
+- FastMCP 2.14.1+
 
 ### Installation
 
@@ -347,11 +351,22 @@ notionmcp/
 
 ### Common Issues
 
+**Server Won't Start in Cursor**
+
+```
+Issue: Server fails to start in Cursor IDE
+Solution: 
+1. Ensure NOTION_TOKEN is set in Cursor MCP settings
+2. Check that cwd points to the notion-mcp directory
+3. Verify Python 3.11+ is in PATH
+4. See CURSOR_FIX.md for detailed setup instructions
+```
+
 **Authentication Error**
 
 ```
 Error: Notion API token is invalid or expired
-Solution: Check your NOTION_TOKEN in .env file
+Solution: Check your NOTION_TOKEN in .env file or Cursor MCP settings
 ```
 
 **Permission Denied**
@@ -366,6 +381,16 @@ Solution: Add your integration to the workspace containing the content
 ```
 Error: Rate limit exceeded
 Solution: Wait 60 seconds and retry, check your usage patterns
+```
+
+**Import Errors**
+
+```
+Error: ModuleNotFoundError or import failures
+Solution: 
+1. Install dependencies: pip install -r requirements.txt
+2. Check PYTHONPATH includes notion-mcp directory
+3. Verify all dependencies are installed: pip list
 ```
 
 ## 💡 Tips for Austrian Efficiency

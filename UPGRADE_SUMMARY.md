@@ -93,8 +93,20 @@ After upgrade, verify:
 1. Test server startup and tool registration
 2. Verify structured logging output format
 3. Test with Claude Desktop and other MCP clients
-4. (Optional) Enhance test coverage further
-5. (Optional) Add MCPB packaging if needed
+4. Configure in Cursor IDE (see CURSOR_FIX.md and CURSOR_MCP_CONFIG.md)
+5. (Optional) Enhance test coverage further
+6. (Optional) Add MCPB packaging if needed
+
+## Recent Fixes (2025-12-29)
+
+### Cursor Compatibility Fix (v1.0.1)
+- **Issue**: Server wouldn't start in Cursor due to import-time initialization failures
+- **Solution**: Implemented lazy initialization of Notion client
+  - Server can now start even if `NOTION_TOKEN` isn't set
+  - Tools initialize client on-demand and return clear errors if token is missing
+  - Updated `glama.json` to use direct `server.py` execution
+- **Files Changed**: `server.py`, `glama.json`
+- **Documentation**: Created `CURSOR_FIX.md` and `CURSOR_MCP_CONFIG.md`
 
 ## Notes
 
@@ -102,3 +114,4 @@ After upgrade, verify:
 - All tools already use docstring-based documentation (no description= parameters)
 - Makefile updated to use ruff instead of black/isort for consistency
 - Austrian efficiency principles maintained throughout upgrade
+- Lazy initialization ensures compatibility with Cursor and other MCP clients
