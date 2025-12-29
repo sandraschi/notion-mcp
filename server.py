@@ -1,35 +1,53 @@
 #!/usr/bin/env python3
 """
 NotionMCP - Comprehensive Notion Workspace Management MCP Server
-FastMCP 2.0 Implementation with Austrian Efficiency
+FastMCP 2.14.1 Implementation with Austrian Efficiency
 
 Built for Claude Desktop Pro + MCP setup
 Author: Sandra (Vienna, Austria) 🇦🇹
 Date: July 22, 2025
 Context: Academic knowledge management + weeb organization + direct communication
+
+Status: Beta - Actively developed, API may change
 """
 
 import asyncio
-import logging
 import os
+import sys
+from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
-from fastmcp import FastMCP
-from pydantic import BaseModel, Field
+import structlog
 import yaml
+from fastmcp import FastMCP
+from pydantic import Field
+
 from notion.client import NotionClient
 from notion.pages import PageManager
 from notion.databases import DatabaseManager
 from notion.collaboration import CollaborationManager
 from notion.automations import AutomationManager
 
-# Austrian efficiency: Direct logging setup
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%d.%m.%Y %H:%M:%S'  # Austrian date format
+# Configure structured logging (JSON to stderr only)
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.processors.JSONRenderer()
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
 )
-logger = logging.getLogger("notionmcp")
+
+logger = structlog.get_logger(__name__)
 
 # Load configuration with Austrian context
 def load_config() -> Dict[str, Any]:
@@ -38,10 +56,10 @@ def load_config() -> Dict[str, Any]:
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
-        logger.info(f"Configuration loaded from {config_path}")
+        logger.info("Configuration loaded", config_path=config_path)
         return config
     except FileNotFoundError:
-        logger.warning(f"Config file not found at {config_path}, using defaults")
+        logger.warning("Config file not found, using defaults", config_path=config_path)
         return {
             "server": {
                 "name": "Notion Workspace Management MCP 🗃️",
@@ -50,8 +68,56 @@ def load_config() -> Dict[str, Any]:
             }
         }
 
-# FastMCP 2.0 Server Setup
-app = FastMCP("Notion Workspace Management MCP 🗃️")
+# Server lifespan for startup/shutdown lifecycle
+@asynccontextmanager
+async def server_lifespan(app: FastMCP):
+    """Server lifespan context manager for FastMCP 2.14.1+."""
+    # Startup
+    logger.info("Starting NotionMCP Server", version="1.0.0", fastmcp_version="2.14.1")
+    try:
+        yield
+    finally:
+        # Shutdown
+        logger.info("Shutting down NotionMCP Server")
+
+# FastMCP 2.14.1 Server Setup with comprehensive instructions
+app = FastMCP(
+    "Notion Workspace Management MCP 🗃️",
+    instructions="""You are NotionMCP, a comprehensive MCP server for Notion workspace management with Austrian efficiency.
+
+CORE CAPABILITIES:
+- Page Management: Create, update, search, archive pages with German/Japanese character support
+- Database Operations: Create databases, query with complex filters, bulk import/export
+- Collaboration: Add comments, manage users, handle workspace permissions
+- Automation: Setup webhooks, sync external data, create workflow automations
+- AI Integration: Generate summaries, analyze content, provide research assistance
+
+USAGE PATTERNS:
+1. Page Operations: Use create_page() to create pages, update_page() to modify, search_pages() to find content
+2. Database Management: Use create_database() to set up databases, query_database() for complex queries
+3. Collaboration: Use add_comment() for discussions, get_workspace_users() for team management
+4. Automation: Use setup_automation() for workflows, sync_external_data() for integrations
+5. AI Features: Use generate_ai_summary() for content analysis, export_workspace_data() for backups
+
+RESPONSE FORMAT:
+- All tools return dictionaries with 'success' boolean
+- Error responses include 'error' field with descriptive message
+- Success responses include relevant data fields
+- Austrian efficiency: Direct, honest error messages without gaslighting
+
+AUSTRIAN CONTEXT:
+- Timezone: Europe/Vienna (all dates in DD.MM.YYYY format)
+- Language: German characters (ä, ö, ü, ß) fully supported
+- Budget: Optimized for ~€100/month AI tools budget
+- Academic focus: Research and knowledge management workflows
+
+ERROR HANDLING:
+- Authentication errors include token setup instructions
+- Permission errors specify which workspace needs access
+- Rate limit errors provide wait time and optimization suggestions
+- Direct communication: No euphemisms, clear actionable feedback""",
+    lifespan=server_lifespan
+)
 config = load_config()
 
 # Initialize Notion client with Austrian efficiency
@@ -68,9 +134,9 @@ try:
     collab_manager = CollaborationManager(notion_client)
     automation_manager = AutomationManager(notion_client)
     
-    logger.info("Notion client initialized successfully - Austrian efficiency activated! 🇦🇹")
+    logger.info("Notion client initialized successfully", message="Austrian efficiency activated")
 except Exception as e:
-    logger.error(f"Failed to initialize Notion client: {e}")
+    logger.error("Failed to initialize Notion client", error=str(e))
     logger.error("Please check your NOTION_TOKEN environment variable")
     raise
 
@@ -93,7 +159,7 @@ async def create_page(
             properties=properties,
             children=children
         )
-        logger.info(f"Page created successfully: {title}")
+        logger.info("Page created successfully", page_title=title, page_id=result["id"])
         return {
             "success": True,
             "page_id": result["id"],
@@ -102,11 +168,11 @@ async def create_page(
             "message": f"Page '{title}' created with Austrian efficiency! ✅"
         }
     except Exception as e:
-        logger.error(f"Failed to create page '{title}': {e}")
+        logger.error("Failed to create page", page_title=title, error=str(e))
         return {
             "success": False,
             "error": str(e),
-            "message": f"Page creation failed - check your permissions and parent_id"
+            "message": "Page creation failed - check your permissions and parent_id"
         }
 
 @app.tool()
@@ -126,7 +192,7 @@ async def update_page(
             properties=properties,
             archived=archived
         )
-        logger.info(f"Page updated successfully: {page_id}")
+        logger.info("Page updated successfully", page_id=page_id)
         return {
             "success": True,
             "page_id": page_id,
@@ -134,7 +200,7 @@ async def update_page(
             "message": "Page updated with Austrian efficiency! ✅"
         }
     except Exception as e:
-        logger.error(f"Failed to update page {page_id}: {e}")
+        logger.error("Failed to update page", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -154,14 +220,14 @@ async def get_page_content(
             include_children=include_children,
             block_depth=block_depth
         )
-        logger.info(f"Page content retrieved: {page_id}")
+        logger.info("Page content retrieved", page_id=page_id)
         return {
             "success": True,
             "page": result,
             "message": "Page content retrieved with Austrian efficiency! ✅"
         }
     except Exception as e:
-        logger.error(f"Failed to get page content {page_id}: {e}")
+        logger.error("Failed to get page content", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -207,13 +273,13 @@ async def archive_page(
 ) -> Dict[str, Any]:
     """Safely archive or delete pages with Austrian efficiency confirmations."""
     try:
-        result = await page_manager.archive_page(
+        await page_manager.archive_page(
             page_id=page_id,
             permanent_delete=permanent_delete,
             backup_first=backup_first
         )
         action = "deleted" if permanent_delete else "archived"
-        logger.info(f"Page {action}: {page_id}")
+        logger.info("Page archived/deleted", page_id=page_id, action=action, backup_created=backup_first)
         return {
             "success": True,
             "page_id": page_id,
@@ -222,7 +288,7 @@ async def archive_page(
             "message": f"Page {action} with Austrian efficiency! ✅"
         }
     except Exception as e:
-        logger.error(f"Failed to archive page {page_id}: {e}")
+        logger.error("Failed to archive page", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -282,17 +348,18 @@ async def query_database(
             limit=limit,
             cursor=cursor
         )
-        logger.info(f"Database query completed: {database_id}")
+        result_count = len(results.get("results", []))
+        logger.info("Database query completed", database_id=database_id, result_count=result_count)
         return {
             "success": True,
             "results": results.get("results", []),
             "has_more": results.get("has_more", False),
             "next_cursor": results.get("next_cursor"),
-            "count": len(results.get("results", [])),
-            "message": f"Query completed with Austrian efficiency! 🔍"
+            "count": result_count,
+            "message": "Query completed with Austrian efficiency! 🔍"
         }
     except Exception as e:
-        logger.error(f"Database query failed {database_id}: {e}")
+        logger.error("Database query failed", database_id=database_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -339,13 +406,13 @@ async def update_database_entry(
 ) -> Dict[str, Any]:
     """Update existing database entries and properties."""
     try:
-        result = await db_manager.update_database_entry(
+        await db_manager.update_database_entry(
             page_id=page_id,
             properties=properties,
             content=content,
             archived=archived
         )
-        logger.info(f"Database entry updated: {page_id}")
+        logger.info("Database entry updated", page_id=page_id)
         return {
             "success": True,
             "page_id": page_id,
@@ -353,7 +420,7 @@ async def update_database_entry(
             "message": "Database entry updated with Austrian efficiency! ✅"
         }
     except Exception as e:
-        logger.error(f"Failed to update database entry {page_id}: {e}")
+        logger.error("Failed to update database entry", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -402,14 +469,17 @@ async def bulk_import_data(
             mapping=mapping,
             merge_strategy=merge_strategy
         )
-        logger.info(f"Bulk import completed: {database_id}")
+        logger.info("Bulk import completed", 
+                   database_id=database_id,
+                   successful=result.get('successful_imports', 0),
+                   total=result.get('total_records', 0))
         return {
             "success": True,
             "import_results": result,
             "message": f"Imported {result['successful_imports']}/{result['total_records']} records with Austrian efficiency! 📊"
         }
     except Exception as e:
-        logger.error(f"Bulk import failed: {e}")
+        logger.error("Bulk import failed", database_id=database_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -433,14 +503,14 @@ async def add_comment(
             parent_comment_id=parent_comment_id,
             rich_text=rich_text
         )
-        logger.info(f"Comment added: {page_id}")
+        logger.info("Comment added", page_id=page_id, comment_id=result.get("id"))
         return {
             "success": True,
             "comment": result,
             "message": "Comment added with Austrian efficiency! 💬"
         }
     except Exception as e:
-        logger.error(f"Failed to add comment: {e}")
+        logger.error("Failed to add comment", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -462,7 +532,7 @@ async def get_comments(
             sort_by=sort_by,
             limit=limit
         )
-        logger.info(f"Comments retrieved: {page_id}")
+        logger.info("Comments retrieved", page_id=page_id, comment_count=len(results))
         return {
             "success": True,
             "comments": results,
@@ -470,7 +540,7 @@ async def get_comments(
             "message": f"Retrieved {len(results)} comments with Austrian efficiency! 💬"
         }
     except Exception as e:
-        logger.error(f"Failed to get comments: {e}")
+        logger.error("Failed to get comments", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -490,7 +560,7 @@ async def get_workspace_users(
             permission_level=permission_level,
             sort_by=sort_by
         )
-        logger.info(f"Workspace users retrieved: {len(results)}")
+        logger.info("Workspace users retrieved", user_count=len(results))
         return {
             "success": True,
             "users": results,
@@ -498,7 +568,7 @@ async def get_workspace_users(
             "message": f"Retrieved {len(results)} users with Austrian efficiency! 👥"
         }
     except Exception as e:
-        logger.error(f"Failed to get workspace users: {e}")
+        logger.error("Failed to get workspace users", error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -522,10 +592,10 @@ async def setup_automation(
             actions=actions,
             webhook_url=webhook_url
         )
-        logger.info(f"Automation created: {result['automation_id']}")
+        logger.info("Automation created", automation_id=result.get('automation_id'))
         return result
     except Exception as e:
-        logger.error(f"Failed to setup automation: {e}")
+        logger.error("Failed to setup automation", error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -545,10 +615,10 @@ async def sync_external_data(
             sync_config=sync_config,
             update_frequency=update_frequency
         )
-        logger.info(f"External sync configured: {result['sync_id']}")
+        logger.info("External sync configured", sync_id=result.get('sync_id'), source=external_source)
         return result
     except Exception as e:
-        logger.error(f"Failed to setup external sync: {e}")
+        logger.error("Failed to setup external sync", source=external_source, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -570,10 +640,10 @@ async def generate_ai_summary(
             length=length,
             focus_areas=focus_areas
         )
-        logger.info(f"AI summary generated: {page_id}")
+        logger.info("AI summary generated", page_id=page_id, summary_type=summary_type)
         return result
     except Exception as e:
-        logger.error(f"Failed to generate AI summary: {e}")
+        logger.error("Failed to generate AI summary", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -595,10 +665,10 @@ async def export_workspace_data(
             include_metadata=include_metadata,
             compression=compression
         )
-        logger.info(f"Export completed: {result['export_config']['id']}")
+        logger.info("Export completed", export_id=result.get('export_config', {}).get('id'), format=format, scope=scope)
         return result
     except Exception as e:
-        logger.error(f"Failed to export data: {e}")
+        logger.error("Failed to export data", scope=scope, format=format, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -619,25 +689,35 @@ async def test_connection() -> Dict[str, Any]:
             "message": "NotionMCP server healthy with Austrian efficiency! 🇦🇹"
         }
     except Exception as e:
-        logger.error(f"Connection test failed: {e}")
+        logger.error("Connection test failed", error=str(e))
         return {
             "success": False,
             "error": str(e),
             "message": "Connection test failed - check your NOTION_TOKEN"
         }
 
-if __name__ == "__main__":
+async def main() -> None:
+    """Main entry point for the MCP server."""
     # Austrian efficiency: Clear startup message
-    logger.info("🇦🇹 NotionMCP server starting with Austrian efficiency!")
-    logger.info("Sin temor y sin esperanza - practical Notion management without hype")
-    logger.info(f"Server: {config.get('server', {}).get('name', 'NotionMCP')}")
-    logger.info(f"Timezone: {config.get('server', {}).get('timezone', 'Europe/Vienna')}")
+    logger.info("NotionMCP server starting", message="Austrian efficiency activated")
+    logger.info("Server configuration", 
+                server_name=config.get('server', {}).get('name', 'NotionMCP'),
+                timezone=config.get('server', {}).get('timezone', 'Europe/Vienna'))
     
     # Check required environment variables
     if not os.getenv("NOTION_TOKEN"):
-        logger.error("NOTION_TOKEN environment variable is required!")
+        logger.error("NOTION_TOKEN environment variable is required")
         logger.error("Get your integration token from: https://www.notion.so/my-integrations")
-        exit(1)
+        sys.exit(1)
     
-    # Run the FastMCP 2.0 server
-    app.run()
+    # Run the FastMCP 2.14.1 server
+    await app.run_stdio_async()
+
+
+def run() -> None:
+    """Synchronous entry point for compatibility."""
+    asyncio.run(main())
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

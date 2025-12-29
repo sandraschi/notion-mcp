@@ -1,6 +1,8 @@
 # NotionMCP - Comprehensive Notion Workspace Management
 
-**FastMCP 2.0 Implementation with Austrian Efficiency 🇦🇹**
+**FastMCP 2.14.1 Implementation with Austrian Efficiency 🇦🇹**
+
+**Status: Beta** - Actively developed, API may change
 
 A powerful MCP (Model Context Protocol) server for comprehensive Notion workspace management, built with Austrian efficiency for academic research, project organization, and weeb content management.
 
@@ -252,13 +254,24 @@ backup = await export_workspace_data(
 
 ```bash
 # Run all tests
-pytest
+make test
+# or
+pytest tests/ -v
+
+# Run unit tests only
+make test-unit
+# or
+pytest tests/ -v -m "not integration and not slow"
+
+# Run integration tests only
+make test-integration
+# or
+pytest tests/ -v -m integration
 
 # Test with coverage
-pytest --cov=notion --cov-report=html
-
-# Integration tests (requires real Notion workspace)
-pytest tests/integration_tests.py -v
+make test-coverage
+# or
+pytest tests/ --cov=notion --cov-report=html
 
 # Austrian efficiency: Fast unit tests only
 pytest tests/test_api.py -v
@@ -274,6 +287,31 @@ pytest tests/test_api.py -v
 4. **Vienna context**: Proper timezone and character encoding
 5. **Academic focus**: Research and knowledge management optimization
 
+### Development Commands
+
+```bash
+# Install development dependencies
+make install-dev
+
+# Run linting
+make lint
+# or
+ruff check server.py notion/ tests/
+
+# Format code
+make format
+# or
+ruff format server.py notion/ tests/
+
+# Type checking
+make type-check
+# or
+mypy server.py notion/ --ignore-missing-imports
+
+# Run all checks
+make check
+```
+
 ### Project Structure
 
 ```
@@ -287,7 +325,9 @@ notionmcp/
 │   ├── collaboration.py # Comments & users
 │   └── automations.py   # AI & automation
 ├── tests/            # Test suite
-└── server.py         # FastMCP 2.0 entry point
+│   ├── test_api.py  # Unit tests
+│   └── integration_tests.py  # Integration tests
+└── server.py         # FastMCP 2.14.1 entry point
 ```
 
 ## 📖 Documentation

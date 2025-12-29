@@ -496,13 +496,13 @@ class DatabaseManager:
             if include_statistics:
                 # Get basic statistics
                 try:
-                    query_result = await self.query_database(database_id, limit=1)
+                    await self.query_database(database_id, limit=1)
                     result["statistics"] = {
                         "total_entries": "Unknown",  # Notion doesn't provide total count
                         "last_edited": database.get("last_edited_time"),
                         "created_time": database.get("created_time")
                     }
-                except:
+                except Exception:
                     result["statistics"] = {"error": "Could not retrieve statistics"}
             
             logger.info(f"Database schema retrieved: {database_id}")

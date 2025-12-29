@@ -1,0 +1,89 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "mcpServers": {
+    "notion-mcp": {
+      "command": "python",
+      "args": ["-m", "server"],
+      "env": {
+        "PYTHONPATH": "${PWD}",
+        "PYTHONUNBUFFERED": "1"
+      },
+      "description": "FastMCP 2.14.1 compatible MCP server for comprehensive Notion workspace management. 19 tools including pages, databases, collaboration, automation, and AI integration with Austrian efficiency.",
+      "capabilities": {
+        "tools": {
+          "enabled": true
+        },
+        "resources": {
+          "enabled": false
+        },
+        "prompts": {
+          "enabled": false
+        }
+      },
+      "timeout": {
+        "initialize": 30000,
+        "message": 60000
+      },
+      "metadata": {
+        "version": "1.0.0",
+        "author": "Sandra Schi",
+        "homepage": "https://github.com/sandraschi/notion-mcp",
+        "license": "MIT",
+        "tags": [
+          "notion",
+          "workspace",
+          "pages",
+          "databases",
+          "collaboration",
+          "automation",
+          "fastmcp",
+          "productivity",
+          "mcp-server"
+        ],
+        "categories": [
+          "productivity",
+          "workspace",
+          "automation",
+          "collaboration"
+        ]
+      }
+    }
+  },
+  "maintainers": ["sandraschi"],
+  "name": "notion-mcp",
+  "description": "FastMCP 2.14.1 compatible MCP server for comprehensive Notion workspace management. 19 tools including pages, databases, collaboration, automation, and AI integration with Austrian efficiency. Beta status.",
+  "type": "mcp_server",
+  "status": "beta",
+  "framework": "FastMCP 2.14.1",
+  "tools": 19,
+  "transport": ["stdio"],
+  "keywords": [
+    "notion",
+    "workspace",
+    "pages",
+    "databases",
+    "collaboration",
+    "automation",
+    "fastmcp",
+    "productivity",
+    "mcp-server"
+  ],
+  "features": {
+    "page_management": {
+      "enabled": true,
+      "operations": ["create", "read", "update", "delete", "search"]
+    },
+    "database_operations": {
+      "enabled": true,
+      "features": ["query", "create", "modify", "filter", "sort"]
+    },
+    "collaboration": {
+      "enabled": true,
+      "features": ["sharing", "comments", "permissions"]
+    },
+    "automation": {
+      "enabled": true,
+      "capabilities": ["triggers", "actions", "workflows"]
+    }
+  }
+}

@@ -8,10 +8,8 @@ Date: July 22, 2025
 """
 
 import pytest
-import asyncio
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
+from unittest.mock import AsyncMock, Mock, patch
 from datetime import datetime
-import json
 
 # Import the modules to test
 from notion.client import NotionClient

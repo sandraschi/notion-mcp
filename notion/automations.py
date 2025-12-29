@@ -11,13 +11,8 @@ Features:
 """
 
 import logging
-import json
-import asyncio
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from datetime import datetime
-import zipfile
-import os
-from io import StringIO
 
 logger = logging.getLogger("notionmcp.automations")
 

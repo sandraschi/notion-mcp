@@ -9,18 +9,11 @@ Context: End-to-end validation of NotionMCP server with real MCP protocol
 """
 
 import pytest
-import asyncio
-import json
 import os
 import tempfile
-from typing import Any, Dict, List
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
-from datetime import datetime
+from unittest.mock import AsyncMock, Mock, patch
 
 # FastMCP and MCP protocol imports
-from fastmcp import FastMCP
-from mcp.types import Tool, Resource
-import server  # Our NotionMCP server
 
 
 class TestNotionMCPIntegration:
@@ -467,8 +460,8 @@ class TestAdvancedFeatureTools:
             }
             
             # Mock file operations
-            with patch('builtins.open', create=True) as mock_open, \
-                 patch('os.makedirs') as mock_makedirs, \
+            with patch('builtins.open', create=True), \
+                 patch('os.makedirs'), \
                  patch('shutil.make_archive') as mock_archive:
                 
                 mock_archive.return_value = "/tmp/notion_backup_20250722.zip"

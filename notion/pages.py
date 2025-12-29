@@ -11,7 +11,7 @@ Features:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 logger = logging.getLogger("notionmcp.pages")
@@ -166,18 +166,18 @@ class PageManager:
             if parent_id:
                 try:
                     # Check if parent is a database or page
-                    parent = await self.client.get_page(parent_id)
+                    await self.client.get_page(parent_id)
                     page_data["parent"] = {"page_id": parent_id}
-                except:
+                except Exception:
                     try:
-                        parent = await self.client.get_database(parent_id)
+                        await self.client.get_database(parent_id)
                         page_data["parent"] = {"database_id": parent_id}
                         
                         # Add properties for database pages
                         if properties:
                             db_properties = self._build_page_properties(properties)
                             page_data["properties"].update(db_properties)
-                    except:
+                    except Exception:
                         raise Exception(f"Parent ID {parent_id} is not a valid page or database")
             else:
                 # Create in workspace root

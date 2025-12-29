@@ -10,11 +10,9 @@ Features:
 - Direct error communication (no gaslighting)
 """
 
-import asyncio
 import logging
-import os
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Union
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 import pytz
 
 from notion_client import AsyncClient
@@ -115,13 +113,8 @@ class NotionClient:
         if not text:
             return text
         
-        # Ensure UTF-8 encoding for German characters
-        german_chars = {
-            'ae': 'ä', 'oe': 'ö', 'ue': 'ü', 'ss': 'ß',
-            'Ae': 'Ä', 'Oe': 'Ö', 'Ue': 'Ü'
-        }
-        
-        # This is just for demonstration - in practice, text should already be UTF-8
+        # Ensure UTF-8 encoding for German characters (ä, ö, ü, ß)
+        # In practice, text should already be UTF-8
         return text
     
     def validate_page_id(self, page_id: str) -> str:

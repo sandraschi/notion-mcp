@@ -23,7 +23,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "fastmcp>=2.13.0",
+    "fastmcp>=2.14.1,<2.15.0",
     "notion-client>=2.2.0",
     "python-dotenv>=1.0.0",
     "pydantic>=2.0.0",
@@ -32,6 +32,7 @@ dependencies = [
     "requests>=2.31.0",
     "python-dateutil>=2.8.0",
     "typing-extensions>=4.0.0",
+    "structlog>=23.0.0",
 ]
 
 [project.optional-dependencies]
@@ -49,7 +50,7 @@ Repository = "https://github.com/sandraschi/notion-mcp.git"
 Issues = "https://github.com/sandraschi/notion-mcp/issues"
 
 [project.scripts]
-notion-mcp = "server:app.run"
+notion-mcp = "server:run"
 
 [tool.setuptools]
 py-modules = ["server"]
