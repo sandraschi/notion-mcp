@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -102,3 +102,5 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+# Rust / Zed IDE — rust-analyzer may create target/ at repo root
+target/
