@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "notion-mcp"
-version = "1.0.0"
-description = "FastMCP server for comprehensive Notion workspace management"
+version = "1.1.0"
+description = "FastMCP 3.1 server for comprehensive Notion workspace management and RAG"
 authors = [
     {name = "Sandra", email = "sandra@example.com"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.11"
-keywords = ["mcp", "notion", "workspace", "fastmcp", "productivity"]
+requires-python = ">=3.12"
+keywords = ["mcp", "notion", "workspace", "fastmcp", "rag", "lancedb"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -23,16 +23,20 @@ classifiers = [
 ]
 
 dependencies = [
-    "fastmcp>=2.14.1,<2.15.0",
-    "notion-client>=2.2.0",
+    "fastmcp>=3.1.0",
+    "notion-client>=2.2.1",
+    "lancedb>=0.17.0",
+    "tantivy>=0.22.0",
+    "sentence-transformers>=3.0.0",
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.0",
+    "structlog>=24.0.0",
     "python-dotenv>=1.0.0",
+    "pyyaml>=6.0.0",
     "pydantic>=2.0.0",
-    "aiohttp>=3.8.0",
-    "pyyaml>=6.0",
-    "requests>=2.31.0",
-    "python-dateutil>=2.8.0",
+    "pydantic-settings>=2.0.0",
+    "pytz>=2024.1",
     "typing-extensions>=4.0.0",
-    "structlog>=23.0.0",
 ]
 
 [project.optional-dependencies]
@@ -57,15 +61,11 @@ py-modules = ["server"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["notion*"]
+include = ["notion_mcp*"]
 
 [tool.black]
 line-length = 100
 target-version = ["py311"]
-
-[tool.ruff]
-line-length = 100
-target-version = "py311"
 
 [tool.mypy]
 python_version = "3.11"
@@ -73,3 +73,31 @@ strict = false
 warn_return_any = true
 warn_unused_configs = true
 
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+# Hardened v13.1 Rule Set
+select = [
+    "E", "F", "I", "UP", "B", "S", "A", "ANN", "COM", "C4", "DTZ", "PIE", "T20", "PYI", "Q", "RSE", "RET", "SLF", "SIM", "TID", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "FLY", "PERF", "FURB", "LOG", "RUF"
+]
+ignore = [
+    "ANN101", # Missing type annotation for self
+    "ANN102", # Missing type annotation for cls
+    "COM812", # Trailing comma missing (handled by formatter)
+    "ISC001", # Single line implicit string concatenation (handled by formatter)
+    "PLR0913", # Too many arguments
+    "S101",   # Use of assert (standard for pytest)
+    "TRY003", # Avoid specifying long messages in exceptions
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "ANN", "PLR", "TRY", "S105", "S106", "SLF001", "ARG002", "PLC0415"]
+"server.py" = ["T20", "ARG001", "ARG002"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

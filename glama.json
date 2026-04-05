@@ -3,12 +3,14 @@
   "mcpServers": {
     "notion-mcp": {
       "command": "python",
-      "args": ["server.py"],
+      "args": [
+        "server.py"
+      ],
       "env": {
         "PYTHONPATH": "${workspaceFolder}/notion-mcp",
         "PYTHONUNBUFFERED": "1"
       },
-      "description": "FastMCP 2.14.1 compatible MCP server for comprehensive Notion workspace management. 19 tools including pages, databases, collaboration, automation, and AI integration with Austrian efficiency.",
+      "description": "FastMCP 3.1 compatible MCP server for comprehensive Notion workspace management and RAG-powered semantic discovery. 21 tools including pages, databases, RAG synchronization, and semantic search.",
       "capabilities": {
         "tools": {
           "enabled": true
@@ -17,7 +19,7 @@
           "enabled": false
         },
         "prompts": {
-          "enabled": false
+          "enabled": true
         }
       },
       "timeout": {
@@ -25,38 +27,44 @@
         "message": 60000
       },
       "metadata": {
-        "version": "1.0.0",
+        "version": "1.1.0",
         "author": "Sandra Schi",
         "homepage": "https://github.com/sandraschi/notion-mcp",
         "license": "MIT",
         "tags": [
           "notion",
+          "rag",
+          "lancedb",
+          "vector-search",
+          "semantic-search",
           "workspace",
           "pages",
           "databases",
-          "collaboration",
-          "automation",
           "fastmcp",
           "productivity",
           "mcp-server"
         ],
         "categories": [
           "productivity",
-          "workspace",
-          "automation",
-          "collaboration"
+          "search",
+          "knowledge-management",
+          "automation"
         ]
       }
     }
   },
-  "maintainers": ["sandraschi"],
+  "maintainers": [
+    "sandraschi"
+  ],
   "name": "notion-mcp",
-  "description": "FastMCP 2.14.1 compatible MCP server for comprehensive Notion workspace management. 19 tools including pages, databases, collaboration, automation, and AI integration with Austrian efficiency. Beta status.",
+  "description": "FastMCP 3.1 compatible MCP server for comprehensive Notion workspace management and RAG-powered semantic discovery. 21 tools including pages, databases, RAG synchronization, and semantic search. SOTA 2026.",
   "type": "mcp_server",
-  "status": "beta",
-  "framework": "FastMCP 2.14.1",
-  "tools": 19,
-  "transport": ["stdio"],
+  "status": "production",
+  "framework": "FastMCP 3.1",
+  "tools": 21,
+  "transport": [
+    "stdio"
+  ],
   "keywords": [
     "notion",
     "workspace",
@@ -71,19 +79,39 @@
   "features": {
     "page_management": {
       "enabled": true,
-      "operations": ["create", "read", "update", "delete", "search"]
+      "operations": [
+        "create",
+        "read",
+        "update",
+        "delete",
+        "search"
+      ]
     },
     "database_operations": {
       "enabled": true,
-      "features": ["query", "create", "modify", "filter", "sort"]
+      "features": [
+        "query",
+        "create",
+        "modify",
+        "filter",
+        "sort"
+      ]
     },
     "collaboration": {
       "enabled": true,
-      "features": ["sharing", "comments", "permissions"]
+      "features": [
+        "sharing",
+        "comments",
+        "permissions"
+      ]
     },
     "automation": {
       "enabled": true,
-      "capabilities": ["triggers", "actions", "workflows"]
+      "capabilities": [
+        "triggers",
+        "actions",
+        "workflows"
+      ]
     }
   }
 }

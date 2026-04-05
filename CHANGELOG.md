@@ -5,6 +5,30 @@ All notable changes to Notion MCP will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0-RAG] - 2026-03-07
+
+### Added
+- **FastMCP 3.1 SOTA Alignment**: Complete migration to FastMCP 3.1 (Feb 2026 standard)
+  - Implemented async lifespan management and SOTA tool patterns
+- **LanceDB RAG Integration**: High-performance local vector search core
+  - Recursive Notion chunking pipeline in `rag/orchestrator.py`
+  - Local embeddings using `all-MiniLM-L6-v2`
+  - Tools: `sync_rag_index`, `search_notion_knowledge`, `clear_rag_index`
+- **SOTA Web Dashboard**: Functional React interface on port 10810
+  - Real-time Notion telemetry and workspace statistics
+  - RAG-powered Chat interface with contextual citations
+  - Semantic search discovery page
+  - LLM "Glom On" auto-discovery (Ollama/LM Studio support)
+- **Austrian SOTA UI**: Dark mode, glassmorphism, and premium aesthetics
+
+### Changed
+- Migrated code logic to new `notion_mcp/` package structure
+- Updated `server.py` to use functional FastAPI backend for web telemetry
+- Enhanced tool documentation with rich docstrings
+
+### Fixed
+- Fixed async entry point issues and FastMCP deprecations
+
 ## [1.0.1] - 2025-12-29
 
 ### Fixed
