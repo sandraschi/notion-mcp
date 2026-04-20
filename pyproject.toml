@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "notion-mcp"
 version = "1.1.0"
-description = "FastMCP 3.1 server for comprehensive Notion workspace management and RAG"
+description = "FastMCP 3.1.0 server for comprehensive Notion workspace management and RAG"
 authors = [
     {name = "Sandra", email = "sandra@example.com"}
 ]

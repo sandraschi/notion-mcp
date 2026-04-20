@@ -1,14 +1,16 @@
 # NotionMCP - Comprehensive Notion Knowledge Orchestrator
 
-**FastMCP 3.1 Implementation with Austrian Efficiency **
+[![FastMCP Version](https://img.shields.io/badge/FastMCP-3.1.0-blue?style=flat-square&logo=python&logoColor=white)](https://github.com/sandraschi/fastmcp) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![Linted with Biome](https://img.shields.io/badge/Linted_with-Biome-60a5fa?style=flat-square&logo=biome&logoColor=white)](https://biomejs.dev/) [![Built with Just](https://img.shields.io/badge/Built_with-Just-000000?style=flat-square&logo=gnu-bash&logoColor=white)](https://github.com/casey/just)
+
+**FastMCP 3.1.0 Implementation with Austrian Efficiency **
 
 **Status: Production-Ready (SOTA 2026)** - High-performance RAG and Semantic Search  
-**Version: 1.1.0-RAG** - Latest: FastMCP 3.1 migration, LanceDB core, and functional Dashboard
+**Version: 1.1.0-RAG** - Latest: FastMCP 3.1.0 migration, LanceDB core, and functional Dashboard
 
 NotionMCP is a powerful MCP (Model Context Protocol) server and web application for comprehensive Notion workspace management and semantic knowledge retrieval. Built with Austrian efficiency for academic research, project organization, and RAG-powered intelligence.
 
 > [!IMPORTANT]
-> **FastMCP 3.1 Alignment**: This repository is fully compliant with the February 2026 Fleet Standard.
+> **FastMCP 3.1.0 Alignment**: This repository is fully compliant with the February 2026 Fleet Standard.
 
 ##  Overview
 
@@ -29,7 +31,7 @@ NotionMCP provides 21 comprehensive tools for managing Notion workspaces and per
 - Python 3.11+
 - Notion account with integration token
 - Claude Desktop Pro with MCP support (or Cursor with MCP)
-- FastMCP 2.14.1+
+- FastMCP 3.1.0+
 
 ##  Installation
 
@@ -342,7 +344,7 @@ notionmcp/
  tests/            # Test suite
     test_api.py  # Unit tests
     integration_tests.py  # Integration tests
- server.py         # FastMCP 2.14.1 entry point
+ server.py         # FastMCP 3.1.0 entry point
 ```
 
 ##  Documentation
@@ -412,6 +414,17 @@ Solution:
 4. **Vienna timezone**: All dates automatically in European format
 5. **German characters**: Full support for , , ,  in content
 6. **Budget monitoring**: Track API usage to stay within limits
+
+
+## 🛡️ Industrial Quality Stack
+
+This project adheres to **SOTA 14.1** industrial standards for high-fidelity agentic orchestration:
+
+- **Python (Core)**: [Ruff](https://astral.sh/ruff) for linting and formatting. Zero-tolerance for `print` statements in core handlers (`T201`).
+- **Webapp (UI)**: [Biome](https://biomejs.dev/) for sub-millisecond linting. Strict `noConsoleLog` enforcement.
+- **Protocol Compliance**: Hardened `stdout/stderr` isolation to ensure crash-resistant JSON-RPC communication.
+- **Automation**: [Justfile](./justfile) recipes for all fleet operations (`just lint`, `just fix`, `just dev`).
+- **Security**: Automated audits via `bandit` and `safety`.
 
 ##  License
 
