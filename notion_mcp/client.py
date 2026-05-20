@@ -12,9 +12,9 @@ Features:
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-import pytz
+from typing import Any
 
+import pytz
 from notion_client import AsyncClient
 from notion_client.errors import APIErrorCode, APIResponseError
 
@@ -29,22 +29,23 @@ class NotionClient:
     def __init__(
         self,
         token: str,
-        version: str = "2025-09-03",
+        version: str = "2026-03-11",
         timeout: int = 30,
         timezone_str: str = "Europe/Vienna",
+        token_type: str = "internal",
     ):
         """
         Initialize Notion client with Austrian context.
 
-        Args:
-            token: Notion integration token
-            version: API version
-            timeout: Request timeout in seconds
-            timezone_str: Timezone for date handling (default: Vienna)
+        token: Notion integration token or Personal Access Token (PAT)
+        version: API version (default: 2026-03-11)
+        timeout: Request timeout in seconds
+        timezone_str: Timezone for date handling (default: Vienna)
+        token_type: "internal" or "pat" (Personal Access Token)
         """
         if not token:
             raise ValueError(
-                "NOTION_TOKEN is required - get it from https://www.notion.so/my-integrations"
+                "Notion token is required. Set NOTION_TOKEN (internal integration) or NOTION_PAT (personal access token)."
             )
 
         self.client = AsyncClient(
@@ -54,12 +55,15 @@ class NotionClient:
         self.timezone = pytz.timezone(timezone_str)
         self.version = version
         self.timeout = timeout
+        self.token_type = token_type
 
         # Austrian efficiency: Track API usage for budget awareness
         self.request_count = 0
         self.error_count = 0
 
-        logger.info(f"Notion client initialized - Vienna timezone: {timezone_str}")
+        logger.info(
+            f"Notion client initialized ({token_type}) - Vienna timezone: {timezone_str}, API: {version}"
+        )
 
     async def _make_request(self, method: str, *args, **kwargs) -> Any:
         """
@@ -102,7 +106,7 @@ class NotionClient:
         except Exception as e:
             self.error_count += 1
             logger.error(f"Unexpected error in {method}: {e}")
-            raise Exception(f"Request failed: {str(e)}")
+            raise Exception(f"Request failed: {e!s}")
 
     def get_vienna_time(self) -> datetime:
         """Get current time in Vienna timezone for Austrian efficiency."""
@@ -140,7 +144,7 @@ class NotionClient:
         # Return with proper hyphen formatting
         return f"{clean_id[:8]}-{clean_id[8:12]}-{clean_id[12:16]}-{clean_id[16:20]}-{clean_id[20:]}"
 
-    async def test_connection(self) -> Dict[str, Any]:
+    async def test_connection(self) -> dict[str, Any]:
         """Test Notion API connection with Austrian efficiency."""
         try:
             # Try to get the current user
@@ -162,7 +166,7 @@ class NotionClient:
                 "message": "Connection failed - check your token and permissions",
             }
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get client usage statistics for budget awareness."""
         return {
             "total_requests": self.request_count,
@@ -177,19 +181,19 @@ class NotionClient:
 
     # Core API methods with Austrian efficiency
 
-    async def get_page(self, page_id: str) -> Dict[str, Any]:
+    async def get_page(self, page_id: str) -> dict[str, Any]:
         """Get page by ID with validation."""
         page_id = self.validate_page_id(page_id)
         return await self._make_request("pages.retrieve", page_id=page_id)
 
-    async def get_database(self, database_id: str) -> Dict[str, Any]:
+    async def get_database(self, database_id: str) -> dict[str, Any]:
         """Get database by ID with validation."""
         database_id = self.validate_page_id(database_id)
         return await self._make_request("databases.retrieve", database_id=database_id)
 
     async def get_block_children(
-        self, block_id: str, start_cursor: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, block_id: str, start_cursor: str | None = None
+    ) -> dict[str, Any]:
         """Get block children with pagination."""
         block_id = self.validate_page_id(block_id)
         kwargs = {"block_id": block_id}
@@ -200,11 +204,11 @@ class NotionClient:
     async def search(
         self,
         query: str = "",
-        filter: Optional[Dict[str, Any]] = None,
-        sort: Optional[Dict[str, Any]] = None,
-        start_cursor: Optional[str] = None,
+        filter: dict[str, Any] | None = None,
+        sort: dict[str, Any] | None = None,
+        start_cursor: str | None = None,
         page_size: int = 10,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Search with Austrian efficiency parameters."""
         kwargs = {
             "query": query,
@@ -220,27 +224,27 @@ class NotionClient:
 
         return await self._make_request("search", **kwargs)
 
-    async def create_page(self, **kwargs) -> Dict[str, Any]:
+    async def create_page(self, **kwargs) -> dict[str, Any]:
         """Create page with parameter validation."""
         return await self._make_request("pages.create", **kwargs)
 
-    async def update_page(self, page_id: str, **kwargs) -> Dict[str, Any]:
+    async def update_page(self, page_id: str, **kwargs) -> dict[str, Any]:
         """Update page with ID validation."""
         page_id = self.validate_page_id(page_id)
         return await self._make_request("pages.update", page_id=page_id, **kwargs)
 
-    async def create_database(self, **kwargs) -> Dict[str, Any]:
+    async def create_database(self, **kwargs) -> dict[str, Any]:
         """Create database with parameter validation."""
         return await self._make_request("databases.create", **kwargs)
 
-    async def update_database(self, database_id: str, **kwargs) -> Dict[str, Any]:
+    async def update_database(self, database_id: str, **kwargs) -> dict[str, Any]:
         """Update database with ID validation."""
         database_id = self.validate_page_id(database_id)
         return await self._make_request(
             "databases.update", database_id=database_id, **kwargs
         )
 
-    async def query_database(self, database_id: str, **kwargs) -> Dict[str, Any]:
+    async def query_database(self, database_id: str, **kwargs) -> dict[str, Any]:
         """Query database with ID validation."""
         database_id = self.validate_page_id(database_id)
         return await self._make_request(
@@ -248,21 +252,65 @@ class NotionClient:
         )
 
     async def append_block_children(
-        self, block_id: str, children: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, block_id: str, children: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Append blocks with validation."""
         block_id = self.validate_page_id(block_id)
         return await self._make_request(
             "blocks.children.append", block_id=block_id, children=children
         )
 
-    async def get_users(self, start_cursor: Optional[str] = None) -> Dict[str, Any]:
+    async def get_users(self, start_cursor: str | None = None) -> dict[str, Any]:
         """Get workspace users."""
         kwargs = {}
         if start_cursor:
             kwargs["start_cursor"] = start_cursor
         return await self._make_request("users.list", **kwargs)
 
-    async def get_user(self, user_id: str) -> Dict[str, Any]:
+    async def get_user(self, user_id: str) -> dict[str, Any]:
         """Get user by ID."""
         return await self._make_request("users.retrieve", user_id=user_id)
+
+    async def create_comment(
+        self,
+        parent: dict[str, Any],
+        rich_text: list[dict[str, Any]],
+        discussion_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a comment on a page or in a discussion thread."""
+        kwargs: dict[str, Any] = {
+            "parent": parent,
+            "rich_text": rich_text,
+        }
+        if discussion_id:
+            kwargs["discussion_id"] = discussion_id
+        return await self._make_request("comments.create", **kwargs)
+
+    async def list_comments(
+        self,
+        block_id: str,
+        start_cursor: str | None = None,
+        page_size: int | None = None,
+    ) -> dict[str, Any]:
+        """List comments on a page or block."""
+        block_id = self.validate_page_id(block_id)
+        kwargs: dict[str, Any] = {"block_id": block_id}
+        if start_cursor:
+            kwargs["start_cursor"] = start_cursor
+        if page_size:
+            kwargs["page_size"] = min(page_size, 100)
+        return await self._make_request("comments.list", **kwargs)
+
+    async def retrieve_page_markdown(self, page_id: str) -> dict[str, Any]:
+        """Retrieve page content as enhanced markdown."""
+        page_id = self.validate_page_id(page_id)
+        return await self._make_request("pages.retrieve_markdown", page_id=page_id)
+
+    async def update_page_markdown(
+        self, page_id: str, markdown: str
+    ) -> dict[str, Any]:
+        """Update page content using enhanced markdown."""
+        page_id = self.validate_page_id(page_id)
+        return await self._make_request(
+            "pages.update_markdown", page_id=page_id, markdown=markdown
+        )

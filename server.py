@@ -22,6 +22,7 @@ from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
 from notion_mcp.plugins import PluginManager
 from fastmcp import FastMCP
+from fastmcp.server import create_proxy
 from pydantic import Field
 
 from notion_mcp.transport import (
@@ -128,6 +129,14 @@ ERROR HANDLING:
 - Direct communication: No euphemisms, clear actionable feedback""",
     lifespan=server_lifespan,
 )
+
+# MCP Bridge — proxy remote MCP servers via ProxyProvider
+MCP_BRIDGE_URLS = os.environ.get("MCP_BRIDGE_URLS", "")
+if MCP_BRIDGE_URLS:
+    for url in MCP_BRIDGE_URLS.split(","):
+        url = url.strip()
+        if url:
+            mcp.add_provider(create_proxy(url))
 
 # Initialize RAG Orchestrator for knowledge management
 rag = RAGOrchestrator()
@@ -319,18 +328,21 @@ def initialize_notion_client():
     if notion_client is not None:
         return  # Already initialized
 
-    # Check for NOTION_TOKEN
-    token = os.getenv("NOTION_TOKEN")
+    # Check for NOTION_TOKEN (internal) or NOTION_PAT (personal access token)
+    token = os.getenv("NOTION_TOKEN") or os.getenv("NOTION_PAT")
+    token_type = "pat" if os.getenv("NOTION_PAT") and not os.getenv("NOTION_TOKEN") else "internal"
+
     if not token:
         raise ValueError(
-            "NOTION_TOKEN environment variable is required. Get your integration token from: https://www.notion.so/my-integrations"
+            "Notion token required. Set NOTION_TOKEN (internal integration from https://www.notion.so/my-integrations) or NOTION_PAT (personal access token)."
         )
 
     try:
         notion_client = NotionClient(
             token=token,
-            version=os.getenv("NOTION_VERSION", "2025-09-03"),  # SOTA Default
+            version=os.getenv("NOTION_VERSION", "2026-03-11"),
             timeout=int(os.getenv("NOTION_TIMEOUT", "30")),
+            token_type=token_type,
         )
 
         # Initialize managers

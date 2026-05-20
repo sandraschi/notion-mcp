@@ -11,8 +11,8 @@ Features:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
 from datetime import datetime
+from typing import Any
 
 logger = logging.getLogger("notionmcp.pages")
 
@@ -27,7 +27,7 @@ class PageManager:
         """Initialize with NotionClient instance."""
         self.client = notion_client
 
-    def _build_content_blocks(self, content: str) -> List[Dict[str, Any]]:
+    def _build_content_blocks(self, content: str) -> list[dict[str, Any]]:
         """
         Convert plain text or markdown to Notion blocks with Austrian efficiency.
         Supports German and Japanese characters.
@@ -127,8 +127,8 @@ class PageManager:
         return blocks
 
     def _build_page_properties(
-        self, properties: Optional[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, properties: dict[str, Any] | None
+    ) -> dict[str, Any]:
         """
         Build page properties for database entries with Austrian efficiency.
         """
@@ -167,7 +167,7 @@ class PageManager:
 
         return notion_properties
 
-    async def get_page(self, page_id: str) -> Dict[str, Any]:
+    async def get_page(self, page_id: str) -> dict[str, Any]:
         """Retrieve raw page metadata with Austrian efficiency."""
         return await self.client.get_page(page_id)
 
@@ -175,10 +175,10 @@ class PageManager:
         self,
         title: str,
         content: str = "",
-        parent_id: Optional[str] = None,
-        properties: Optional[Dict[str, Any]] = None,
-        children: Optional[List[Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
+        parent_id: str | None = None,
+        properties: dict[str, Any] | None = None,
+        children: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """
         Create a new Notion page with Austrian efficiency.
 
@@ -248,11 +248,11 @@ class PageManager:
     async def update_page(
         self,
         page_id: str,
-        title: Optional[str] = None,
-        content: Optional[str] = None,
-        properties: Optional[Dict[str, Any]] = None,
-        archived: Optional[bool] = None,
-    ) -> Dict[str, Any]:
+        title: str | None = None,
+        content: str | None = None,
+        properties: dict[str, Any] | None = None,
+        archived: bool | None = None,
+    ) -> dict[str, Any]:
         """
         Update existing page with Austrian efficiency.
         """
@@ -296,7 +296,7 @@ class PageManager:
 
     async def get_page_content(
         self, page_id: str, include_children: bool = True, block_depth: int = 10
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Retrieve complete page content with Austrian efficiency.
         Budget-aware with intelligent depth limiting.
@@ -322,9 +322,42 @@ class PageManager:
             logger.error(f"Failed to get page content {page_id}: {e}")
             raise
 
+    async def get_page_markdown(self, page_id: str) -> dict[str, Any]:
+        """
+        Retrieve page content as enhanced markdown via the 2026-03-11 API.
+        """
+        try:
+            result = await self.client.retrieve_page_markdown(page_id)
+            logger.info(f"Page markdown retrieved: {page_id}")
+            return {
+                "page_id": page_id,
+                "markdown": result.get("markdown", ""),
+                "raw": result,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get page markdown {page_id}: {e}")
+            raise
+
+    async def update_page_markdown(
+        self, page_id: str, markdown: str
+    ) -> dict[str, Any]:
+        """
+        Update page content using enhanced markdown via the 2026-03-11 API.
+        """
+        try:
+            result = await self.client.update_page_markdown(page_id, markdown)
+            logger.info(f"Page markdown updated: {page_id}")
+            return {
+                "page_id": page_id,
+                "result": result,
+            }
+        except Exception as e:
+            logger.error(f"Failed to update page markdown {page_id}: {e}")
+            raise
+
     async def _get_all_blocks(
         self, block_id: str, max_depth: int = 10, current_depth: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Recursively get all blocks with depth limiting for budget efficiency.
         """
@@ -362,10 +395,10 @@ class PageManager:
     async def search_pages(
         self,
         query: str,
-        filter_by_type: Optional[str] = None,
+        filter_by_type: str | None = None,
         sort_by: str = "last_edited_time",
         limit: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Search pages with natural language queries and Austrian efficiency.
         """
@@ -396,7 +429,7 @@ class PageManager:
 
     async def archive_page(
         self, page_id: str, permanent_delete: bool = False, backup_first: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Archive or delete page with Austrian efficiency safety measures.
         """
@@ -436,7 +469,7 @@ class PageManager:
             logger.error(f"Failed to archive page {page_id}: {e}")
             raise
 
-    async def get_page_tree(self, page_id: str, max_depth: int = 3) -> Dict[str, Any]:
+    async def get_page_tree(self, page_id: str, max_depth: int = 3) -> dict[str, Any]:
         """
         Get page hierarchy tree for navigation and organization.
         Austrian efficiency with depth limiting.
