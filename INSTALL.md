@@ -43,13 +43,16 @@ If you prefer not to use `just`:
    ```
 4. Start the server:
    ```powershell
-   # stdio mode (for MCP clients like Claude Desktop)
-   uv run python -m notion_mcp.server
+   # Full stack (recommended) - double-click or:
+   .\start.bat
 
-   # HTTP mode (for web dashboard)
-   uv run uvicorn notion_mcp.server:app --port 10811
+   # stdio mode (for MCP clients like Claude Desktop)
+   uv run python server.py --stdio
+
+   # HTTP backend only
+   uv run python server.py --http --port 10811
    ```
-5. Open `http://localhost:10811` or the frontend URL.
+5. Open `http://127.0.0.1:10810` (dashboard) or `http://127.0.0.1:10811/api/status` (backend).
 
 ---
 

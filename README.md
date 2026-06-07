@@ -13,7 +13,7 @@
 **FastMCP 3.1.0 Implementation with Austrian Efficiency **
 
 **Status: Production-Ready (SOTA 2026)** - High-performance RAG and Semantic Search  
-**Version: 1.1.0-RAG** - Latest: FastMCP 3.1.0 migration, LanceDB core, and functional Dashboard
+**Version: 1.2.0** - Real Comments API, LLM-powered AI summary, Workers management, webhooks
 
 NotionMCP is a powerful MCP (Model Context Protocol) server and web application for comprehensive Notion workspace management and semantic knowledge retrieval. Built with Austrian efficiency for academic research, project organization, and RAG-powered intelligence.
 
@@ -36,7 +36,7 @@ If you don't have `just` installed:
 
 ##  Overview
 
-NotionMCP provides 21 comprehensive tools for managing Notion workspaces and performing semantic discovery. It features a local RAG pipeline using LanceDB for private, high-performance knowledge retrieval.
+NotionMCP provides **32 comprehensive tools** for managing Notion workspaces and performing semantic discovery. It features a local RAG pipeline using LanceDB for private, high-performance knowledge retrieval, plus Notion Workers management via the `ntn` CLI.
 
 ###  Key SOTA Features
 
@@ -44,6 +44,12 @@ NotionMCP provides 21 comprehensive tools for managing Notion workspaces and per
 - ** SOTA Dashboard**: Functional web interface with real-time Notion telemetry and LLM "Glom On" discovery
 - ** complete Page Management**: Create, update, search, and organize pages with German/Japanese character support
 - ** Semantic Search**: Discover knowledge using meaning and intent across your entire workspace
+- ** Real Comments API**: Threaded discussions via Notion's native Comments API (no more callout-block workaround)
+- ** LLM-Powered Summaries**: AI content analysis via configurable OpenAI-compatible API (Ollama, OpenAI, LM Studio)
+- ** Worker Management**: Deploy and manage Notion Workers via the `ntn` CLI bridge
+- ** Webhook Event Receiver**: Receive real-time Notion notifications at your endpoint
+- ** Personal Access Tokens (PAT)**: Use user-scoped tokens alongside internal integrations
+- ** Markdown Content Endpoints**: Read and write pages as enhanced markdown
 - ** Austrian Reliability**: Zero first-time failures, strict rate limit awareness, and Europe/Vienna context
 
 ##  Quick Start (5 Minutes)
@@ -85,7 +91,7 @@ Add to your `claude_desktop_config.json`:
 4. Add the integration to your workspaces
 5. Paste token in `.env` file
 
-##  Tool Reference (18 Tools)
+##  Tool Reference (32 Tools)
 
 ###  Page Management (5 tools)
 
@@ -132,6 +138,25 @@ Add to your `claude_desktop_config.json`:
 | `sync_external_data` | Sync from external sources | GitHub repos, research APIs |
 | `generate_ai_summary` | AI-powered content analysis | Research summaries, insights |
 | `export_workspace_data` | Backup and export functionality | Data backup, migration |
+| `import_workspace_data` | Import Markdown/JSON into Notion | Bulk content import |
+
+###  Webhook Management (2 tools) [NEW]
+
+| Tool | Description | Example Use |
+|------|-------------|-------------|
+| `verify_webhook` | Store verification token from Notion webhook POST | Complete webhook setup |
+| `list_webhook_events` | List received Notion webhook events | Monitor workspace activity |
+
+###  Notion Workers (6 tools) [NEW]
+
+| Tool | Description | Example Use |
+|------|-------------|-------------|
+| `deploy_worker` | Deploy a Notion Worker via ntn CLI | Deploy sync or tool worker |
+| `list_workers` | List deployed Workers | Check worker status |
+| `scaffold_worker` | Scaffold new Worker project | Create worker from template |
+| `worker_logs` | Fetch Worker logs | Debug deployed workers |
+| `check_ntn` | Verify ntn CLI installation | Pre-flight check |
+| `orchestrate_workers` | Multi-operation worker orchestration | Batch worker operations |
 
 ##  Austrian Efficiency Features
 
@@ -165,8 +190,24 @@ Add to your `claude_desktop_config.json`:
 ### Environment Variables
 
 ```bash
-# Required
-NOTION_TOKEN=secret_your_token_here
+# Notion Authentication (choose one)
+NOTION_TOKEN=secret_your_integration_token_here
+# OR
+NOTION_PAT=ntn_your_personal_access_token_here
+
+# API Version
+NOTION_VERSION=2026-03-11
+
+# LLM for AI Summary (optional)
+LLM_API_URL=http://localhost:11434/v1/chat/completions
+LLM_API_KEY=ollama
+LLM_MODEL=llama3.2
+
+# Webhook Configuration (optional)
+NOTION_WEBHOOK_URL=https://your-public-endpoint/api/webhooks/notion
+
+# Notion CLI for Workers (optional)
+NTN_BIN=ntn
 
 # Austrian Context (Optional)
 TIMEZONE=Europe/Vienna
@@ -357,16 +398,20 @@ make check
 notionmcp/
  config/           # YAML configurations
  docs/             # Documentation
- notion/           # Core Notion modules
-    client.py     # API client
+ notion_mcp/       # Core Notion modules
+    client.py     # API client (Comments API, markdown endpoints)
     pages.py      # Page operations
     databases.py  # Database operations
-    collaboration.py # Comments & users
-    automations.py   # AI & automation
+    collaboration.py # Comments & users (real Comments API)
+    automations.py   # AI summary, webhooks, automation
+    workers.py       # Notion Workers via ntn CLI (NEW)
+    plugins.py      # Plugin management
+    rag/            # LanceDB vector RAG pipeline
+    transport.py    # Dual STDIO/HTTP transport
  tests/            # Test suite
     test_api.py  # Unit tests
     integration_tests.py  # Integration tests
- server.py         # FastMCP 3.1.0 entry point
+ server.py         # FastMCP entry point (32 tools)
 ```
 
 ##  Documentation

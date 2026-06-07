@@ -1,22 +1,18 @@
-Param([switch]$Headless)
-$SkipFrontend = $Headless
+param(
+    [switch]$Headless,
+    [switch]$BackendOnly,
+    [switch]$FrontendOnly,
+    [switch]$NoBrowser
+)
 
-# --- SOTA Headless Standard ---
-if ($Headless -and ($Host.UI.RawUI.WindowTitle -notmatch 'Hidden')) {
-    Start-Process pwsh -ArgumentList '-NoProfile', '-File', $PSCommandPath, '-Headless' -WindowStyle Hidden
-    exit
+$webStart = Join-Path $PSScriptRoot "web_sota\start.ps1"
+if (-not (Test-Path -LiteralPath $webStart)) {
+    Write-Host "ERROR: web_sota\start.ps1 not found." -ForegroundColor Red
+    exit 1
 }
-$WindowStyle = if ($Headless) { 'Hidden' } else { 'Normal' }
-# ------------------------------
-
-$env:FASTMCP_LOG_LEVEL = 'WARNING'
-# notion-mcp Start - Standards-Compliant SOTA
-Write-Host 'Starting notion-mcp...' -ForegroundColor Cyan
-
-Set-Location $PSScriptRoot
-Write-Host 'Starting Standardized Fullstack Hybrid...' -ForegroundColor Green
-# Launch backend Hidden by default to prevent console spam
-Start-Process pwsh -ArgumentList '-NoProfile', '-Command', 'uv run -m notion_mcp' -WindowStyle Hidden
-Set-Location web_sota
-if ($SkipFrontend) { return }
-npm run dev
+& $webStart `
+    -Headless:$Headless `
+    -BackendOnly:$BackendOnly `
+    -FrontendOnly:$FrontendOnly `
+    -NoBrowser:$NoBrowser
+exit $LASTEXITCODE

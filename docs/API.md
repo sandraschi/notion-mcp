@@ -1,6 +1,8 @@
 # NotionMCP API Reference
 
-**Complete documentation for all 18 tools with Austrian efficiency examples**
+**Complete documentation for all 32 tools with Austrian efficiency examples**
+
+**Version: 1.2.0** — Real Comments API, LLM-powered AI summary, Workers management, webhook receiver
 
 ## 📄 Page Management Tools (5 tools)
 
@@ -728,7 +730,7 @@ const all_users = await get_workspace_users({
 });
 ```
 
-## 🔍 Advanced Features (4 tools)
+## 🔍 Advanced Features (8 tools)
 
 ### 15. `setup_automation`
 
@@ -918,6 +920,94 @@ const citations_export = await export_workspace_data({
 });
 ```
 
+## 🌐 Webhook Management (2 tools)
+
+### `verify_webhook`
+
+Store a verification token received from Notion's webhook subscription setup.
+
+**Parameters:**
+- `verification_token` (string, required): Token from Notion's POST to your webhook endpoint
+
+**Returns:**
+```json
+{
+  "success": true,
+  "message": "Verification token stored. Paste it in Notion's Webhook UI to complete setup."
+}
+```
+
+### `list_webhook_events`
+
+List received Notion webhook events (page changes, comment activity, etc.).
+
+**Parameters:**
+- `limit` (number, optional, default: 50): Max events to return
+- `event_type` (string, optional): Filter by event type (e.g. "page_created", "comment_created")
+
+**Returns:**
+```json
+{
+  "success": true,
+  "events": [{"type": "page_created", "id": "..."}],
+  "count": 1
+}
+```
+
+## 🔧 Notion Workers Management (6 tools)
+
+### `deploy_worker`
+
+Deploy a Notion Worker from a local project directory. Requires `ntn` CLI installed.
+
+**Parameters:**
+- `project_dir` (string, optional): Path to worker project (default: current directory)
+
+**Returns:**
+```json
+{
+  "success": true,
+  "output": "[build] Deploying... [build] Worker updated..."
+}
+```
+
+### `list_workers`
+
+List all deployed Notion Workers.
+
+**Parameters:** None
+
+### `scaffold_worker`
+
+Scaffold a new Notion Worker project.
+
+**Parameters:**
+- `project_dir` (string, required): Directory to create the project in
+
+### `worker_logs`
+
+Fetch logs from a deployed Notion Worker.
+
+**Parameters:**
+- `worker_name` (string, optional): Filter by worker name
+- `tail` (number, optional, default: 50): Number of log lines
+
+### `check_ntn`
+
+Check if the Notion CLI (`ntn`) is installed and return its version.
+
+**Parameters:** None
+
+### `orchestrate_workers`
+
+Multi-operation worker orchestration.
+
+**Parameters:**
+- `operation` (string, required): One of: deploy, list, scaffold, logs, check
+- `project_dir` (string, optional): For deploy/scaffold operations
+- `worker_name` (string, optional): For logs operation
+- `tail` (number, optional, default: 50): For logs operation
+
 ## 🧪 Testing and Health Check
 
 ### `test_connection`
@@ -944,7 +1034,7 @@ Test Notion API connection and server health.
     "success_rate": 100.0,
     "current_time": "22.07.2025 18:30",
     "timezone": "Europe/Vienna",
-    "version": "2022-06-28"
+    "version": "2026-03-11"
   },
   "message": "NotionMCP server healthy with Austrian efficiency! 🇦🇹"
 }

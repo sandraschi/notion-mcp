@@ -5,6 +5,31 @@ All notable changes to Notion MCP will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-05-25
+
+### Added
+- **Real Comments API**: `add_comment` and `get_comments` now use Notion's native Comments API (`POST/GET /v1/comments`) instead of the callout-block workaround. Supports threaded discussions and resolution tracking.
+- **Personal Access Token (PAT) auth**: `NOTION_PAT` env var for user-scoped tokens alongside `NOTION_TOKEN` (internal). Auto-detected in `initialize_notion_client()`.
+- **Markdown page endpoints**: `get_page_markdown()` and `update_page_markdown()` via `PAGES.retrieve_markdown` and `PAGES.update_markdown` (API 2026-03-11).
+- **API 2026-03-11**: Default API version upgraded across `client.py`, `server.py`, config files.
+- **Webhook event receiver**: `POST /api/webhooks/notion` FastAPI endpoint receives Notion webhook events. Events persisted as JSON in `./exports/webhook_events/`. Signature verification via HMAC-SHA256.
+- **Real AI summary**: `generate_ai_summary` now calls an OpenAI-compatible LLM API when `LLM_API_URL` is configured. Falls back to improved mock. Configurable model/key via `LLM_API_KEY`, `LLM_MODEL`. Requires `httpx`.
+- **Notion Workers management**: New `notion_mcp/workers.py` module wrapping `ntn` CLI. Tools: `deploy_worker`, `list_workers`, `scaffold_worker`, `worker_logs`, `check_ntn`, `orchestrate_workers`.
+- **Webhook MCP tools**: `verify_webhook`, `list_webhook_events` for managing Notion webhook subscriptions.
+- **`httpx` dependency**: Added for async LLM API calls and webhook receiver.
+
+### Changed
+- All automation tools (`setup_automation`, `sync_external_data`, `generate_ai_summary`, `export_workspace_data`, `import_workspace_data`, `orchestrate_automation`) now return `{"success": False}` error dicts instead of raising exceptions.
+- `setup_automation` now guides users through Notion UI webhook setup instead of conceptual in-memory storage.
+- `_generate_mock_summary` returns structured `{"summary", "key_points"}` dict.
+- Updated `.env.example` with `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL`, `NOTION_WEBHOOK_URL`, `NTN_BIN`, `NOTION_PAT`.
+- Bumped version to 1.2.0.
+
+### Fixed
+- No more 💬 callout-block comment workaround — comments are real, visible in the Notion UI, threaded, and resolvable.
+- Webhook storage no longer uses in-memory dict (persisted to disk).
+- `export_workspace_data` uses `Path` instead of string path concatenation.
+
 ## [1.1.0-RAG] - 2026-03-07
 
 ### Added
@@ -97,5 +122,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **1.2.0** (2026-05-25): Real Comments API, AI summary via LLM, Workers management, webhooks, PAT auth, markdown endpoints, API 2026-03-11
 - **1.0.1** (2025-12-29): Cursor compatibility fix with lazy initialization
 - **1.0.0** (2025-12-29): FastMCP 2.14.1 upgrade with structured logging and test harness

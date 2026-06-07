@@ -150,7 +150,7 @@ foreach ($file in $ciFiles.Keys) {
     if (-not (Test-Path $file)) {
         $ciIssues += "Missing: $file"
         $ciScore -= 3
-        $results.Fixes += "Create $file from central docs template"
+        $results.Fixes += "Create $file manually or from repo docs"
     }
 }
 
@@ -255,15 +255,15 @@ foreach ($doc in $requiredDocs.Keys) {
     if (-not (Test-Path $doc)) {
         $docsIssues += "Missing: $doc"
         $docsScore -= 2
-        $results.Fixes += "Create $doc from central docs template"
+        $results.Fixes += "Create $doc from repo docs or templates"
     }
 }
 
 # Check if .cursorrules has Rule #1
 if (Test-Path ".cursorrules") {
     $cursorrules = Get-Content ".cursorrules" -Raw
-    if ($cursorrules -notmatch "RULE #1|Check Central Documentation|central.*docs") {
-        $docsIssues += ".cursorrules missing Rule #1 (central docs reference)"
+    if ($cursorrules -notmatch "RULE #1|Read Repo Docs") {
+        $docsIssues += ".cursorrules missing Rule #1 (local docs reference)"
         $docsScore -= 1
         $results.Fixes += "Add Rule #1 to .cursorrules"
     }
@@ -481,13 +481,11 @@ $(($results.Fixes | Where-Object { $_ -match "Delete|Move|Clean" } | ForEach-Obj
 
 ---
 
-## 📚 References
+## References
 
-- **Central Docs:** D:\Dev\repos\mcp-central-docs\
-- **Standards:** mcp-central-docs/STANDARDS.md
-- **FastMCP Guide:** mcp-central-docs/FASTMCP_2.12_MIGRATION.md
-- **MCPB Packaging:** mcp-central-docs/MCPB_PACKAGING_STANDARDS.md
-- **Templates:** mcp-central-docs/templates/
+- **README:** README.md
+- **Install:** INSTALL.md
+- **Launch:** start.bat / web_sota/start.ps1
 
 ---
 
@@ -523,9 +521,6 @@ if ($GenerateFixScript -and $results.Fixes.Count -gt 0) {
     $fixScriptContent += "Write-Host '🔧 Fixing Repository Standards...' -ForegroundColor Cyan"
     $fixScriptContent += "if (`$DryRun) { Write-Host '🔍 DRY RUN MODE' -ForegroundColor Yellow }"
     $fixScriptContent += ""
-    $fixScriptContent += "`$centralDocs = 'D:\Dev\repos\mcp-central-docs'"
-    $fixScriptContent += ""
-    
     # Add fixes
     foreach ($fix in $results.Fixes) {
         $fixScriptContent += "# Fix: $fix"
@@ -540,10 +535,7 @@ if ($GenerateFixScript -and $results.Fixes.Count -gt 0) {
         elseif ($fix -match "Create (.*?) from") {
             $file = $matches[1]
             $fixScriptContent += "if (-not (Test-Path '$file')) {"
-            $fixScriptContent += "    if (Test-Path `"`$centralDocs/templates/$file`") {"
-            $fixScriptContent += "        Copy-Item `"`$centralDocs/templates/$file`" '$file' -Force"
-            $fixScriptContent += "        Write-Host '  ✅ Copied: $file' -ForegroundColor Green"
-            $fixScriptContent += "    }"
+            $fixScriptContent += "    Write-Host '  [--] Create manually: $file' -ForegroundColor Yellow"
             $fixScriptContent += "}"
         }
         elseif ($fix -match "Delete.*?:\s*(.+)") {

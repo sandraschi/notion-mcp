@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 import yaml
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from notion_mcp.plugins import PluginManager
 from fastmcp import FastMCP
@@ -33,6 +33,7 @@ from notion_mcp.pages import PageManager
 from notion_mcp.databases import DatabaseManager
 from notion_mcp.collaboration import CollaborationManager
 from notion_mcp.automations import AutomationManager
+from notion_mcp import workers as notion_workers
 from notion_mcp.rag.orchestrator import RAGOrchestrator
 
 # Configure structured logging (JSON to stderr only)
@@ -310,6 +311,25 @@ async def chat_interaction(
         "reply": "RAG Context provided. Local LLM invocation would happen here.",
         "context": context,
     }
+
+
+@app.post("/api/webhooks/notion")
+async def notion_webhook_receiver(request: Request):
+    """Receive Notion webhook events (verification + content events)."""
+    initialize_notion_client()
+    import json as _json
+    body = await request.json()
+    headers = dict(request.headers)
+    result = await automation_manager.receive_webhook_event(headers, body)
+    logger.info("Webhook event received", event_type=result.get("event_type", "unknown"))
+    return result
+
+
+@app.get("/api/webhooks/events")
+async def get_webhook_events(limit: int = 50, event_type: str | None = None):
+    """List stored webhook events."""
+    initialize_notion_client()
+    return await automation_manager.list_webhook_events(limit=limit, event_type=event_type)
 
 
 # Initialize Notion client with Austrian efficiency
@@ -1074,7 +1094,7 @@ async def get_workspace_users(
         }
 
 
-# 🔍 Advanced Features (4 tools)
+# 🔍 Advanced Features (7 tools)
 
 
 @mcp.tool()
@@ -1086,23 +1106,14 @@ async def setup_automation(
         default=None, description="Optional webhook URL"
     ),
 ) -> Dict[str, Any]:
-    """Create Notion automations with webhook integration."""
-    try:
-        result = await automation_manager.setup_automation(
-            trigger_type=trigger_type,
-            conditions=conditions,
-            actions=actions,
-            webhook_url=webhook_url,
-        )
-        logger.info("Automation created", automation_id=result.get("automation_id"))
-        return result
-    except Exception as e:
-        logger.error("Failed to setup automation", error=str(e))
-        return {
-            "success": False,
-            "error": str(e),
-            "message": "Automation setup failed - check configuration",
-        }
+    """Configure a Notion automation with webhook integration."""
+    initialize_notion_client()
+    return await automation_manager.setup_automation(
+        trigger_type=trigger_type,
+        conditions=conditions,
+        actions=actions,
+        webhook_url=webhook_url,
+    )
 
 
 @mcp.tool()
@@ -1112,27 +1123,12 @@ async def sync_external_data(
     update_frequency: str = Field(default="daily", description="Update frequency"),
 ) -> Dict[str, Any]:
     """Create synced databases from external tools."""
-    try:
-        result = await automation_manager.sync_external_data(
-            external_source=external_source,
-            sync_config=sync_config,
-            update_frequency=update_frequency,
-        )
-        logger.info(
-            "External sync configured",
-            sync_id=result.get("sync_id"),
-            source=external_source,
-        )
-        return result
-    except Exception as e:
-        logger.error(
-            "Failed to setup external sync", source=external_source, error=str(e)
-        )
-        return {
-            "success": False,
-            "error": str(e),
-            "message": "External sync setup failed - check configuration",
-        }
+    initialize_notion_client()
+    return await automation_manager.sync_external_data(
+        external_source=external_source,
+        sync_config=sync_config,
+        update_frequency=update_frequency,
+    )
 
 
 @mcp.tool()
@@ -1144,23 +1140,14 @@ async def generate_ai_summary(
         default=None, description="Areas to focus on"
     ),
 ) -> Dict[str, Any]:
-    """Use Notion AI for page/database content summaries."""
-    try:
-        result = await automation_manager.generate_ai_summary(
-            page_id=page_id,
-            summary_type=summary_type,
-            length=length,
-            focus_areas=focus_areas,
-        )
-        logger.info("AI summary generated", page_id=page_id, summary_type=summary_type)
-        return result
-    except Exception as e:
-        logger.error("Failed to generate AI summary", page_id=page_id, error=str(e))
-        return {
-            "success": False,
-            "error": str(e),
-            "message": "AI summary generation failed - check page ID",
-        }
+    """Summarize page content using LLM API or fallback."""
+    initialize_notion_client()
+    return await automation_manager.generate_ai_summary(
+        page_id=page_id,
+        summary_type=summary_type,
+        length=length,
+        focus_areas=focus_areas,
+    )
 
 
 @mcp.tool()
@@ -1171,27 +1158,10 @@ async def export_workspace_data(
     compression: bool = Field(default=True, description="Compress export"),
 ) -> Dict[str, Any]:
     """Backup and export functionality with multiple formats."""
-    try:
-        result = await automation_manager.export_workspace_data(
-            scope=scope,
-            format=format,
-            include_metadata=include_metadata,
-            compression=compression,
-        )
-        logger.info(
-            "Export completed",
-            export_id=result.get("export_config", {}).get("id"),
-            format=format,
-            scope=scope,
-        )
-        return result
-    except Exception as e:
-        logger.error("Failed to export data", scope=scope, format=format, error=str(e))
-        return {
-            "success": False,
-            "error": str(e),
-            "message": "Export failed - check permissions and configuration",
-        }
+    initialize_notion_client()
+    return await automation_manager.export_workspace_data(
+        scope=scope, format=format, include_metadata=include_metadata, compression=compression
+    )
 
 
 @mcp.tool()
@@ -1202,23 +1172,13 @@ async def import_workspace_data(
         default="markdown", description="Type of data: markdown or json"
     ),
 ) -> Dict[str, Any]:
-    """Import external data into Notion workspace with SOTA efficiency."""
-    try:
-        initialize_notion_client()
-        result = await automation_manager.import_workspace_data(
-            source_file=source_path,
-            target_parent_id=target_parent_id,
-            import_type=import_type,
-        )
-        logger.info(
-            "Import successful",
-            import_id=result.get("import_id"),
-            target=target_parent_id,
-        )
-        return result
-    except Exception as e:
-        logger.error("Import failed", error=str(e))
-        return {"success": False, "error": str(e)}
+    """Import external data into Notion workspace."""
+    initialize_notion_client()
+    return await automation_manager.import_workspace_data(
+        source_file=source_path,
+        target_parent_id=target_parent_id,
+        import_type=import_type,
+    )
 
 
 @mcp.tool()
@@ -1229,24 +1189,109 @@ async def orchestrate_automation(
     config: Dict[str, Any] = Field(description="Automation configuration"),
 ) -> Dict[str, Any]:
     """SOTA Orchestrator for Notion automations, bulk syncing, and reporting."""
-    try:
-        initialize_notion_client()
-        if operation == "setup":
-            return await automation_manager.setup_automation(**config)
-        elif operation == "sync_external":
-            return await automation_manager.sync_external_data(**config)
-        elif operation == "report":
-            return await automation_manager.generate_ai_summary(**config)
-        elif operation == "export":
-            return await automation_manager.export_workspace_data(**config)
-        else:
-            return {
-                "success": False,
-                "error": f"Unknown automation operation: {operation}",
-            }
-    except Exception as e:
-        logger.error(f"orchestrate_automation failed ({operation})", error=str(e))
-        return {"success": False, "error": str(e)}
+    initialize_notion_client()
+    ops = {
+        "setup": automation_manager.setup_automation,
+        "sync_external": automation_manager.sync_external_data,
+        "report": automation_manager.generate_ai_summary,
+        "export": automation_manager.export_workspace_data,
+    }
+    handler = ops.get(operation)
+    if not handler:
+        return {"success": False, "error": f"Unknown operation: {operation}"}
+    return await handler(**config)
+
+
+# 🌐 Webhook Management (2 tools)
+
+
+@mcp.tool()
+async def verify_webhook(
+    verification_token: str = Field(description="Verification token from Notion's webhook POST"),
+) -> Dict[str, Any]:
+    """Store a webhook verification token from Notion."""
+    initialize_notion_client()
+    return await automation_manager.verify_webhook_subscription(verification_token)
+
+
+@mcp.tool()
+async def list_webhook_events(
+    limit: int = Field(default=50, description="Max events to return"),
+    event_type: Optional[str] = Field(default=None, description="Filter by event type"),
+) -> Dict[str, Any]:
+    """List received Notion webhook events."""
+    initialize_notion_client()
+    events = await automation_manager.list_webhook_events(limit=limit, event_type=event_type)
+    return {"success": True, "events": events, "count": len(events)}
+
+
+# 🔧 Notion Workers Management (6 tools)
+
+
+@mcp.tool()
+async def deploy_worker(
+    project_dir: Optional[str] = Field(
+        default=None, description="Worker project directory (default: current dir)"
+    ),
+) -> Dict[str, Any]:
+    """Deploy a Notion Worker. Requires ntn CLI installed."""
+    return await notion_workers.deploy_worker(project_dir)
+
+
+@mcp.tool()
+async def list_workers() -> Dict[str, Any]:
+    """List deployed Notion Workers. Requires ntn CLI."""
+    return await notion_workers.list_workers()
+
+
+@mcp.tool()
+async def scaffold_worker(
+    project_dir: str = Field(description="Directory to scaffold the worker project"),
+) -> Dict[str, Any]:
+    """Scaffold a new Notion Worker project. Requires ntn CLI."""
+    return await notion_workers.scaffold_worker(project_dir)
+
+
+@mcp.tool()
+async def worker_logs(
+    worker_name: Optional[str] = Field(default=None, description="Worker name filter"),
+    tail: int = Field(default=50, description="Number of log lines"),
+) -> Dict[str, Any]:
+    """Fetch logs from a deployed Notion Worker."""
+    return await notion_workers.worker_logs(worker_name=worker_name, tail=tail)
+
+
+@mcp.tool()
+async def check_ntn() -> Dict[str, Any]:
+    """Check if Notion CLI (ntn) is installed."""
+    return await notion_workers.check_ntn_version()
+
+
+@mcp.tool()
+async def orchestrate_workers(
+    operation: str = Field(
+        description="Worker operation: deploy, list, scaffold, logs, check"
+    ),
+    project_dir: Optional[str] = Field(
+        default=None, description="Project directory (for deploy/scaffold)"
+    ),
+    worker_name: Optional[str] = Field(
+        default=None, description="Worker name (for logs)"
+    ),
+    tail: int = Field(default=50, description="Log lines (for logs)"),
+) -> Dict[str, Any]:
+    """Orchestrate Notion Workers operations."""
+    ops = {
+        "deploy": lambda: notion_workers.deploy_worker(project_dir),
+        "list": notion_workers.list_workers,
+        "scaffold": lambda: notion_workers.scaffold_worker(project_dir or "."),
+        "logs": lambda: notion_workers.worker_logs(worker_name, tail),
+        "check": notion_workers.check_ntn_version,
+    }
+    handler = ops.get(operation)
+    if not handler:
+        return {"success": False, "error": f"Unknown operation: {operation}"}
+    return await handler()
 
 
 # Server health check
