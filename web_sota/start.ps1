@@ -30,6 +30,13 @@ $RepoRoot     = Split-Path -Parent $PSScriptRoot
 $WebRoot      = $PSScriptRoot
 $ApiHealth    = "http://127.0.0.1:$BackendPort/api/status"
 
+$__PortHelpers = Join-Path $RepoRoot 'scripts\PortHelpers.ps1'
+if (-not (Test-Path -LiteralPath $__PortHelpers)) {
+    Write-Host "ERROR: Missing PortHelpers.ps1 at $__PortHelpers" -ForegroundColor Red
+    exit 1
+}
+. $__PortHelpers
+
 $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" +
             [System.Environment]::GetEnvironmentVariable("PATH", "User")
 
@@ -103,22 +110,17 @@ function Test-ViteBinPresent {
     return (Test-Path -LiteralPath $pkg)
 }
 
-function Clear-Ports {
-    param([int[]]$Ports, [string]$Label = "notion-mcp")
-    Write-Host "[$Label] Clearing ports: $($Ports -join ', ')" -ForegroundColor Yellow
-    foreach ($pass in 1..2) {
-        foreach ($port in $Ports) {
-            $conns = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
-            foreach ($conn in $conns) {
-                if ($conn.OwningProcess -le 4) { continue }
-                try {
-                    Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue
-                    $null = Start-Process -FilePath "taskkill.exe" -ArgumentList @("/F", "/PID", "$($conn.OwningProcess)") -WindowStyle Hidden -PassThru -ErrorAction SilentlyContinue
-                } catch {}
-            }
-        }
-        if ($pass -lt 2) { Start-Sleep -Milliseconds 500 }
-    }
+function Invoke-UvSync {
+    param([string]$UvExePath, [string]$Root)
+    Stop-RepoConsoleScriptLock -RepoRoot $Root -ScriptNames @('notion-mcp')
+    & $UvExePath sync --extra dev --project $Root
+    if ($LASTEXITCODE -eq 0) { return $true }
+
+    Write-Host "  [--] uv sync failed - releasing console script lock and retrying once ..." -ForegroundColor Yellow
+    Stop-RepoConsoleScriptLock -RepoRoot $Root -ScriptNames @('notion-mcp')
+    Start-Sleep -Milliseconds 300
+    & $UvExePath sync --extra dev --project $Root
+    return ($LASTEXITCODE -eq 0)
 }
 
 Write-Host "[1/5] Checking prerequisites ..." -ForegroundColor Cyan
@@ -135,9 +137,8 @@ if ($env:SKIP_SYNC -eq "1") {
 } else {
     Write-Host "[2/5] Syncing Python deps (uv sync --extra dev) ..." -ForegroundColor Cyan
     Write-Host "  (first run: uv may download Python - this can take 30s)" -ForegroundColor DarkGray
-    & $uvExe sync --extra dev --project $RepoRoot
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ERROR: uv sync failed." -ForegroundColor Red
+    if (-not (Invoke-UvSync -UvExePath $uvExe -Root $RepoRoot)) {
+        Write-Host "ERROR: uv sync failed. Close any notion-mcp windows and retry, or set SKIP_SYNC=1." -ForegroundColor Red
         exit 1
     }
     Write-Host "  [ok] Python deps ready" -ForegroundColor DarkGreen
@@ -190,7 +191,7 @@ if ($RunFrontend) {
 }
 
 Write-Host "[4/5] Clearing ports $BackendPort / $FrontendPort ..." -ForegroundColor Cyan
-Clear-Ports -Ports @($BackendPort, $FrontendPort)
+Stop-PortListeners -Ports @($BackendPort, $FrontendPort) -Label 'notion-mcp'
 
 Write-Host "[5/5] Starting services ..." -ForegroundColor Cyan
 
