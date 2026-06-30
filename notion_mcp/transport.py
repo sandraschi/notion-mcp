@@ -23,7 +23,7 @@ import argparse
 import asyncio
 import logging
 import os
-from typing import Literal, Optional
+from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
 
@@ -81,9 +81,7 @@ Examples:
     )
 
     transport_group = parser.add_mutually_exclusive_group()
-    transport_group.add_argument(
-        "--stdio", action="store_true", help="Run in STDIO (JSON-RPC) mode (default)"
-    )
+    transport_group.add_argument("--stdio", action="store_true", help="Run in STDIO (JSON-RPC) mode (default)")
     transport_group.add_argument(
         "--http",
         action="store_true",
@@ -129,9 +127,7 @@ def resolve_transport(args: argparse.Namespace) -> TransportType:
         # Fall back to environment variable
         env_transport = os.getenv(ENV_TRANSPORT, "stdio").lower()
         if env_transport not in ("stdio", "http"):
-            logger.warning(
-                f"Invalid {ENV_TRANSPORT}='{env_transport}', defaulting to stdio"
-            )
+            logger.warning(f"Invalid {ENV_TRANSPORT}='{env_transport}', defaulting to stdio")
             return "stdio"
         return env_transport  # type: ignore
 
@@ -158,8 +154,8 @@ def resolve_config(args: argparse.Namespace) -> dict:
 
 async def run_server_async(
     mcp_app,
-    http_app: Optional[any] = None,
-    args: Optional[argparse.Namespace] = None,
+    http_app: Any | None = None,
+    args: argparse.Namespace | None = None,
     server_name: str = "mcp-server",
 ) -> None:
     """
@@ -196,20 +192,14 @@ async def run_server_async(
             path = config["path"]
 
             if http_app:
-                logger.info(
-                    f"Running custom HTTP app with MCP mounted at {path}: http://{host}:{port}"
-                )
+                logger.info(f"Running custom HTTP app with MCP mounted at {path}: http://{host}:{port}")
                 import uvicorn
 
-                config_uv = uvicorn.Config(
-                    http_app, host=host, port=port, log_level="info"
-                )
+                config_uv = uvicorn.Config(http_app, host=host, port=port, log_level="info")
                 server = uvicorn.Server(config_uv)
                 await server.serve()
             else:
-                logger.info(
-                    f"Running in HTTP Streamable mode: http://{host}:{port}{path}"
-                )
+                logger.info(f"Running in HTTP Streamable mode: http://{host}:{port}{path}")
                 await mcp_app.run_http_async(host=host, port=port, path=path)
     except asyncio.CancelledError:
         logger.info(f"{server_name} shutdown requested")
@@ -220,8 +210,8 @@ async def run_server_async(
 
 def run_server(
     mcp_app,
-    http_app: Optional[any] = None,
-    args: Optional[argparse.Namespace] = None,
+    http_app: Any | None = None,
+    args: argparse.Namespace | None = None,
     server_name: str = "mcp-server",
 ) -> None:
     """
@@ -236,8 +226,7 @@ def run_server(
         # If already in a loop, we cannot call asyncio.run()
         # In this case, the caller should have awaited run_server_async instead.
         raise RuntimeError(
-            "run_server() cannot be called from a running event loop. "
-            "Use 'await run_server_async(...)' instead."
+            "run_server() cannot be called from a running event loop. Use 'await run_server_async(...)' instead."
         )
 
     asyncio.run(run_server_async(mcp_app, http_app, args, server_name))
@@ -245,15 +234,15 @@ def run_server(
 
 # Export public API
 __all__ = [
-    "TransportType",
-    "ENV_TRANSPORT",
     "ENV_HOST",
-    "ENV_PORT",
     "ENV_PATH",
-    "get_transport_config",
+    "ENV_PORT",
+    "ENV_TRANSPORT",
+    "TransportType",
     "create_argument_parser",
-    "resolve_transport",
+    "get_transport_config",
     "resolve_config",
+    "resolve_transport",
     "run_server",
     "run_server_async",
 ]

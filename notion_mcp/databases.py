@@ -10,12 +10,12 @@ Features:
 - Perfect for research databases and project tracking
 """
 
-import logging
-import json
 import csv
-from typing import Any, Dict, List, Optional, Union
-from datetime import datetime, date
+import json
+import logging
+from datetime import date, datetime
 from io import StringIO
+from typing import Any
 
 logger = logging.getLogger("notionmcp.databases")
 
@@ -30,9 +30,7 @@ class DatabaseManager:
         """Initialize with NotionClient instance."""
         self.client = notion_client
 
-    def _build_property_schema(
-        self, properties_schema: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _build_property_schema(self, properties_schema: dict[str, Any]) -> dict[str, Any]:
         """
         Build Notion database property schema with Austrian efficiency.
 
@@ -82,33 +80,21 @@ class DatabaseManager:
                 if prop_type == "select":
                     options = prop_config.get("options", [])
                     notion_properties[prop_name] = {
-                        "select": {
-                            "options": [
-                                {"name": opt, "color": "default"} for opt in options
-                            ]
-                        }
+                        "select": {"options": [{"name": opt, "color": "default"} for opt in options]}
                     }
                 elif prop_type == "multi_select":
                     options = prop_config.get("options", [])
                     notion_properties[prop_name] = {
-                        "multi_select": {
-                            "options": [
-                                {"name": opt, "color": "default"} for opt in options
-                            ]
-                        }
+                        "multi_select": {"options": [{"name": opt, "color": "default"} for opt in options]}
                     }
                 elif prop_type == "relation":
                     database_id = prop_config.get("database_id")
                     if database_id:
-                        notion_properties[prop_name] = {
-                            "relation": {"database_id": database_id}
-                        }
+                        notion_properties[prop_name] = {"relation": {"database_id": database_id}}
                 elif prop_type == "formula":
                     expression = prop_config.get("expression", "")
                     if expression:
-                        notion_properties[prop_name] = {
-                            "formula": {"expression": expression}
-                        }
+                        notion_properties[prop_name] = {"formula": {"expression": expression}}
                 elif prop_type == "rollup":
                     relation_property = prop_config.get("relation_property")
                     rollup_property = prop_config.get("rollup_property")
@@ -123,13 +109,11 @@ class DatabaseManager:
                         }
                 else:
                     # Standard property types
-                    notion_properties[prop_name] = {
-                        prop_type: prop_config.get("config", {})
-                    }
+                    notion_properties[prop_name] = {prop_type: prop_config.get("config", {})}
 
         return notion_properties
 
-    def _build_database_filter(self, filter_config: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_database_filter(self, filter_config: dict[str, Any]) -> dict[str, Any]:
         """
         Build complex Notion database filters with Austrian efficiency.
 
@@ -153,9 +137,7 @@ class DatabaseManager:
                 filters.append({"property": prop_name, **condition})
             else:
                 # Simple equality check
-                filters.append(
-                    {"property": prop_name, "rich_text": {"contains": str(condition)}}
-                )
+                filters.append({"property": prop_name, "rich_text": {"contains": str(condition)}})
 
         if len(filters) == 1:
             return filters[0]
@@ -164,9 +146,7 @@ class DatabaseManager:
 
         return {}
 
-    def _build_database_sorts(
-        self, sorts_config: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def _build_database_sorts(self, sorts_config: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Build Notion database sort configuration with Austrian efficiency.
         """
@@ -187,9 +167,7 @@ class DatabaseManager:
                         notion_sorts.append(
                             {
                                 "property": prop,
-                                "direction": direction
-                                if direction in ["ascending", "descending"]
-                                else "ascending",
+                                "direction": direction if direction in ["ascending", "descending"] else "ascending",
                             }
                         )
 
@@ -199,10 +177,10 @@ class DatabaseManager:
         self,
         title: str,
         parent_id: str,
-        properties_schema: Dict[str, Any],
-        icon: Optional[str] = None,
-        cover: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        properties_schema: dict[str, Any],
+        icon: str | None = None,
+        cover: str | None = None,
+    ) -> dict[str, Any]:
         """
         Create database with custom property schema and Austrian efficiency.
 
@@ -261,11 +239,11 @@ class DatabaseManager:
     async def query_database(
         self,
         database_id: str,
-        filter: Optional[Dict[str, Any]] = None,
-        sorts: Optional[List[Dict[str, Any]]] = None,
+        filter: dict[str, Any] | None = None,
+        sorts: list[dict[str, Any]] | None = None,
         limit: int = 100,
-        cursor: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        cursor: str | None = None,
+    ) -> dict[str, Any]:
         """
         Query database with complex filters and sorts - Austrian efficiency.
         Perfect for academic research and project tracking.
@@ -286,13 +264,9 @@ class DatabaseManager:
             query_params["page_size"] = min(limit, 100)  # Respect API limits
 
             # Execute query
-            response = await self.client.query_database(
-                database_id=database_id, **query_params
-            )
+            response = await self.client.query_database(database_id=database_id, **query_params)
 
-            logger.info(
-                f"Database query completed: {database_id} ({len(response.get('results', []))} results)"
-            )
+            logger.info(f"Database query completed: {database_id} ({len(response.get('results', []))} results)")
             return response
 
         except Exception as e:
@@ -302,10 +276,10 @@ class DatabaseManager:
     async def create_database_entry(
         self,
         database_id: str,
-        properties: Dict[str, Any],
+        properties: dict[str, Any],
         content: str = "",
-        children: Optional[List[Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
+        children: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """
         Create database entry with all property types and Austrian efficiency.
         """
@@ -332,15 +306,11 @@ class DatabaseManager:
                 page_manager = PageManager(self.client)
 
                 if children:
-                    await self.client.append_block_children(
-                        block_id=page["id"], children=children
-                    )
+                    await self.client.append_block_children(block_id=page["id"], children=children)
                 elif content:
                     blocks = page_manager._build_content_blocks(content)
                     if blocks:
-                        await self.client.append_block_children(
-                            block_id=page["id"], children=blocks
-                        )
+                        await self.client.append_block_children(block_id=page["id"], children=blocks)
 
             logger.info(f"Database entry created: {database_id} -> {page['id']}")
             return page
@@ -349,9 +319,7 @@ class DatabaseManager:
             logger.error(f"Failed to create database entry in {database_id}: {e}")
             raise
 
-    def _build_entry_properties(
-        self, properties: Dict[str, Any], db_schema: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _build_entry_properties(self, properties: dict[str, Any], db_schema: dict[str, Any]) -> dict[str, Any]:
         """
         Build entry properties based on database schema with Austrian efficiency.
         """
@@ -369,13 +337,9 @@ class DatabaseManager:
                 continue
 
             if prop_type == "title":
-                entry_properties[prop_name] = {
-                    "title": [{"type": "text", "text": {"content": str(value)}}]
-                }
+                entry_properties[prop_name] = {"title": [{"type": "text", "text": {"content": str(value)}}]}
             elif prop_type == "rich_text":
-                entry_properties[prop_name] = {
-                    "rich_text": [{"type": "text", "text": {"content": str(value)}}]
-                }
+                entry_properties[prop_name] = {"rich_text": [{"type": "text", "text": {"content": str(value)}}]}
             elif prop_type == "number":
                 if isinstance(value, (int, float)):
                     entry_properties[prop_name] = {"number": value}
@@ -383,13 +347,9 @@ class DatabaseManager:
                 entry_properties[prop_name] = {"select": {"name": str(value)}}
             elif prop_type == "multi_select":
                 if isinstance(value, list):
-                    entry_properties[prop_name] = {
-                        "multi_select": [{"name": str(item)} for item in value]
-                    }
+                    entry_properties[prop_name] = {"multi_select": [{"name": str(item)} for item in value]}
                 else:
-                    entry_properties[prop_name] = {
-                        "multi_select": [{"name": str(value)}]
-                    }
+                    entry_properties[prop_name] = {"multi_select": [{"name": str(value)}]}
             elif prop_type == "date":
                 if isinstance(value, (datetime, date)):
                     entry_properties[prop_name] = {"date": {"start": value.isoformat()}}
@@ -405,9 +365,7 @@ class DatabaseManager:
                 entry_properties[prop_name] = {"phone_number": str(value)}
             elif prop_type == "relation":
                 if isinstance(value, list):
-                    entry_properties[prop_name] = {
-                        "relation": [{"id": str(item)} for item in value]
-                    }
+                    entry_properties[prop_name] = {"relation": [{"id": str(item)} for item in value]}
                 else:
                     entry_properties[prop_name] = {"relation": [{"id": str(value)}]}
 
@@ -416,10 +374,10 @@ class DatabaseManager:
     async def update_database_entry(
         self,
         page_id: str,
-        properties: Dict[str, Any],
-        content: Optional[str] = None,
-        archived: Optional[bool] = None,
-    ) -> Dict[str, Any]:
+        properties: dict[str, Any],
+        content: str | None = None,
+        archived: bool | None = None,
+    ) -> dict[str, Any]:
         """
         Update database entry with Austrian efficiency.
         """
@@ -439,9 +397,7 @@ class DatabaseManager:
             update_data = {}
 
             if properties:
-                update_data["properties"] = self._build_entry_properties(
-                    properties, db_properties
-                )
+                update_data["properties"] = self._build_entry_properties(properties, db_properties)
 
             if archived is not None:
                 update_data["archived"] = archived
@@ -456,9 +412,7 @@ class DatabaseManager:
                 page_manager = PageManager(self.client)
                 blocks = page_manager._build_content_blocks(content)
                 if blocks:
-                    await self.client.append_block_children(
-                        block_id=page_id, children=blocks
-                    )
+                    await self.client.append_block_children(block_id=page_id, children=blocks)
 
             logger.info(f"Database entry updated: {page_id}")
             return updated_page
@@ -467,16 +421,16 @@ class DatabaseManager:
             logger.error(f"Failed to update database entry {page_id}: {e}")
             raise
 
-    async def get_database(self, database_id: str) -> Dict[str, Any]:
+    async def get_database(self, database_id: str) -> dict[str, Any]:
         """Retrieve database metadata with Austrian efficiency."""
         return await self.client.get_database(database_id)
 
     async def update_database(
         self,
         database_id: str,
-        title: Optional[str] = None,
-        properties: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        title: str | None = None,
+        properties: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Update database title or schema with Austrian efficiency."""
         data = {}
         if title:
@@ -491,7 +445,7 @@ class DatabaseManager:
         database_id: str,
         include_statistics: bool = False,
         property_details: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get database structure and metadata with Austrian efficiency.
         """
@@ -516,9 +470,7 @@ class DatabaseManager:
                     # Add options for select/multi_select
                     if prop_type in ["select", "multi_select"]:
                         options = prop_config.get(prop_type, {}).get("options", [])
-                        result["properties"][prop_name]["options"] = [
-                            opt.get("name") for opt in options
-                        ]
+                        result["properties"][prop_name]["options"] = [opt.get("name") for opt in options]
 
             if include_statistics:
                 # Get basic statistics
@@ -542,10 +494,10 @@ class DatabaseManager:
     async def bulk_import_data(
         self,
         database_id: str,
-        data_source: Union[str, List[Dict[str, Any]]],
-        mapping: Optional[Dict[str, str]] = None,
+        data_source: str | list[dict[str, Any]],
+        mapping: dict[str, str] | None = None,
         merge_strategy: str = "create_new",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Bulk import CSV/JSON data with Austrian efficiency.
         Perfect for academic data migration and project setup.
@@ -568,9 +520,7 @@ class DatabaseManager:
                 raise Exception("No data provided for import")
 
             # Get database schema
-            schema_info = await self.get_database_schema(
-                database_id, property_details=True
-            )
+            schema_info = await self.get_database_schema(database_id, property_details=True)
             db_properties = schema_info["properties"]
 
             # Apply mapping if provided
@@ -596,33 +546,23 @@ class DatabaseManager:
                 try:
                     # Filter properties that exist in the database
                     filtered_properties = {
-                        k: v
-                        for k, v in row.items()
-                        if k in db_properties and v is not None and v != ""
+                        k: v for k, v in row.items() if k in db_properties and v is not None and v != ""
                     }
 
                     if filtered_properties:
-                        await self.create_database_entry(
-                            database_id=database_id, properties=filtered_properties
-                        )
+                        await self.create_database_entry(database_id=database_id, properties=filtered_properties)
                         results["successful_imports"] += 1
 
                     # Austrian efficiency: Log progress every 10 records
                     if (i + 1) % 10 == 0:
-                        logger.info(
-                            f"Import progress: {i + 1}/{len(data)} records processed"
-                        )
+                        logger.info(f"Import progress: {i + 1}/{len(data)} records processed")
 
                 except Exception as row_error:
                     results["failed_imports"] += 1
-                    results["errors"].append(
-                        {"row": i + 1, "data": row, "error": str(row_error)}
-                    )
+                    results["errors"].append({"row": i + 1, "data": row, "error": str(row_error)})
                     logger.warning(f"Failed to import row {i + 1}: {row_error}")
 
-            logger.info(
-                f"Bulk import completed: {results['successful_imports']}/{results['total_records']} successful"
-            )
+            logger.info(f"Bulk import completed: {results['successful_imports']}/{results['total_records']} successful")
             return results
 
         except Exception as e:

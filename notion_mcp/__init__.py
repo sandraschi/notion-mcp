@@ -19,16 +19,10 @@ __author__ = "Sandra (Vienna, Austria)"
 __description__ = "Notion MCP Server with Austrian Efficiency"
 
 # Core imports for easy access
-from .client import NotionClient
-from .pages import PageManager
-from .databases import DatabaseManager
-from .collaboration import CollaborationManager
 from .automations import AutomationManager
+from .client import NotionClient
+from .collaboration import CollaborationManager
+from .databases import DatabaseManager
+from .pages import PageManager
 
-__all__ = [
-    "NotionClient",
-    "PageManager", 
-    "DatabaseManager",
-    "CollaborationManager",
-    "AutomationManager"
-]
+__all__ = ["AutomationManager", "CollaborationManager", "DatabaseManager", "NotionClient", "PageManager"]

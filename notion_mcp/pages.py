@@ -126,9 +126,7 @@ class PageManager:
 
         return blocks
 
-    def _build_page_properties(
-        self, properties: dict[str, Any] | None
-    ) -> dict[str, Any]:
+    def _build_page_properties(self, properties: dict[str, Any] | None) -> dict[str, Any]:
         """
         Build page properties for database entries with Austrian efficiency.
         """
@@ -143,9 +141,7 @@ class PageManager:
 
             if isinstance(value, str):
                 # Text property
-                notion_properties[key] = {
-                    "rich_text": [{"type": "text", "text": {"content": value}}]
-                }
+                notion_properties[key] = {"rich_text": [{"type": "text", "text": {"content": value}}]}
             elif isinstance(value, (int, float)):
                 # Number property
                 notion_properties[key] = {"number": value}
@@ -158,9 +154,7 @@ class PageManager:
             elif isinstance(value, list):
                 # Multi-select or select property
                 if all(isinstance(item, str) for item in value):
-                    notion_properties[key] = {
-                        "multi_select": [{"name": item} for item in value]
-                    }
+                    notion_properties[key] = {"multi_select": [{"name": item} for item in value]}
             elif isinstance(value, dict) and "type" in value:
                 # Direct Notion property format
                 notion_properties[key] = value
@@ -194,11 +188,7 @@ class PageManager:
         """
         try:
             # Build the page data
-            page_data = {
-                "properties": {
-                    "title": {"title": [{"type": "text", "text": {"content": title}}]}
-                }
-            }
+            page_data = {"properties": {"title": {"title": [{"type": "text", "text": {"content": title}}]}}}
 
             # Add parent
             if parent_id:
@@ -220,9 +210,7 @@ class PageManager:
                             db_properties = self._build_page_properties(properties)
                             page_data["properties"].update(db_properties)
                     except Exception:
-                        raise Exception(
-                            f"Parent ID {parent_id} is not a valid page or data source"
-                        )
+                        raise Exception(f"Parent ID {parent_id} is not a valid page or data source")
             else:
                 # Create in workspace root
                 page_data["parent"] = {"type": "workspace", "workspace": True}
@@ -234,9 +222,7 @@ class PageManager:
             if content or children:
                 blocks_to_add = children or self._build_content_blocks(content)
                 if blocks_to_add:
-                    await self.client.append_block_children(
-                        block_id=page["id"], children=blocks_to_add
-                    )
+                    await self.client.append_block_children(block_id=page["id"], children=blocks_to_add)
 
             logger.info(f"Page created successfully: {title} ({page['id']})")
             return page
@@ -261,9 +247,7 @@ class PageManager:
             update_data = {}
 
             if title is not None:
-                update_data["properties"] = {
-                    "title": {"title": [{"type": "text", "text": {"content": title}}]}
-                }
+                update_data["properties"] = {"title": {"title": [{"type": "text", "text": {"content": title}}]}}
 
             if properties is not None:
                 if "properties" not in update_data:
@@ -283,9 +267,7 @@ class PageManager:
                 # In a more sophisticated implementation, we'd replace existing content
                 blocks = self._build_content_blocks(content)
                 if blocks:
-                    await self.client.append_block_children(
-                        block_id=page_id, children=blocks
-                    )
+                    await self.client.append_block_children(block_id=page_id, children=blocks)
 
             logger.info(f"Page updated successfully: {page_id}")
             return page
@@ -313,9 +295,7 @@ class PageManager:
                 result["blocks"] = blocks
                 result["children_count"] = len(blocks)
 
-            logger.info(
-                f"Page content retrieved: {page_id} ({result['children_count']} blocks)"
-            )
+            logger.info(f"Page content retrieved: {page_id} ({result['children_count']} blocks)")
             return result
 
         except Exception as e:
@@ -338,9 +318,7 @@ class PageManager:
             logger.error(f"Failed to get page markdown {page_id}: {e}")
             raise
 
-    async def update_page_markdown(
-        self, page_id: str, markdown: str
-    ) -> dict[str, Any]:
+    async def update_page_markdown(self, page_id: str, markdown: str) -> dict[str, Any]:
         """
         Update page content using enhanced markdown via the 2026-03-11 API.
         """
@@ -355,9 +333,7 @@ class PageManager:
             logger.error(f"Failed to update page markdown {page_id}: {e}")
             raise
 
-    async def _get_all_blocks(
-        self, block_id: str, max_depth: int = 10, current_depth: int = 0
-    ) -> list[dict[str, Any]]:
+    async def _get_all_blocks(self, block_id: str, max_depth: int = 10, current_depth: int = 0) -> list[dict[str, Any]]:
         """
         Recursively get all blocks with depth limiting for budget efficiency.
         """
@@ -368,9 +344,7 @@ class PageManager:
         start_cursor = None
 
         while True:
-            response = await self.client.get_block_children(
-                block_id=block_id, start_cursor=start_cursor
-            )
+            response = await self.client.get_block_children(block_id=block_id, start_cursor=start_cursor)
 
             blocks = response.get("results", [])
             all_blocks.extend(blocks)
@@ -407,17 +381,13 @@ class PageManager:
             search_filter = None
             if filter_by_type:
                 # Update filter value to "data_source" if searching for databases
-                value = (
-                    "data_source" if filter_by_type == "database" else filter_by_type
-                )
+                value = "data_source" if filter_by_type == "database" else filter_by_type
                 search_filter = {"property": "object", "value": value}
 
             search_sort = {"direction": "descending", "timestamp": sort_by}
 
             # Perform search
-            response = await self.client.search(
-                query=query, filter=search_filter, sort=search_sort, page_size=limit
-            )
+            response = await self.client.search(query=query, filter=search_filter, sort=search_sort, page_size=limit)
 
             results = response.get("results", [])
             logger.info(f"Search completed: '{query}' returned {len(results)} results")
@@ -442,9 +412,7 @@ class PageManager:
                     backup_content = await self.get_page_content(page_id)
                     result["backup_content"] = backup_content
                     result["backup_created"] = True
-                    result["backup_time"] = self.client.format_austrian_date(
-                        self.client.get_vienna_time()
-                    )
+                    result["backup_time"] = self.client.format_austrian_date(self.client.get_vienna_time())
                 except Exception as backup_error:
                     logger.warning(f"Backup creation failed: {backup_error}")
 
@@ -453,9 +421,7 @@ class PageManager:
                 # We archive instead and note the intention
                 page = await self.client.update_page(page_id=page_id, archived=True)
                 result["action"] = "archived"
-                result["note"] = (
-                    "Notion API doesn't support permanent deletion - page archived instead"
-                )
+                result["note"] = "Notion API doesn't support permanent deletion - page archived instead"
             else:
                 # Archive the page
                 page = await self.client.update_page(page_id=page_id, archived=True)
@@ -482,14 +448,10 @@ class PageManager:
             if max_depth > 0:
                 # Get child pages (not all blocks, just pages)
                 blocks = await self._get_all_blocks(page_id, max_depth=1)
-                child_pages = [
-                    block for block in blocks if block.get("type") == "child_page"
-                ]
+                child_pages = [block for block in blocks if block.get("type") == "child_page"]
 
                 for child_page in child_pages:
-                    child_tree = await self.get_page_tree(
-                        child_page["id"], max_depth=max_depth - 1
-                    )
+                    child_tree = await self.get_page_tree(child_page["id"], max_depth=max_depth - 1)
                     child_tree["depth"] = 1
                     result["children"].append(child_tree)
 

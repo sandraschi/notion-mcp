@@ -1,5 +1,5 @@
 import re
-from typing import List, Dict, Any
+from typing import Any
 
 
 class DocumentChunker:
@@ -12,7 +12,7 @@ class DocumentChunker:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
-    def chunk_page(self, page_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def chunk_page(self, page_data: dict[str, Any]) -> list[dict[str, Any]]:
         """
         Split a Notion page into manageable chunks.
         Expects page_data containing 'id', 'title', 'content', 'url', 'last_edited'.

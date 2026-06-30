@@ -1,6 +1,6 @@
-from typing import List
-from fastmcp import FastMCP
 import os
+
+from fastmcp import FastMCP
 
 
 class AIRouter:
@@ -18,6 +18,6 @@ class AIRouter:
         # In a full implementation, this would call the LLM to map query -> tool
         return f"AI analysis of: {query}. Routing to appropriate Notion tool..."
 
-    async def get_tools_list(self) -> List[str]:
+    async def get_tools_list(self) -> list[str]:
         """Get list of registered MCP tools."""
         return [t.name for t in self.mcp._tools.values()]

@@ -1,7 +1,9 @@
-from .vector_db import NotionVectorDB
-from .indexer import DocumentChunker
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 import structlog
+
+from .indexer import DocumentChunker
+from .vector_db import NotionVectorDB
 
 logger = structlog.get_logger(__name__)
 
@@ -15,7 +17,7 @@ class RAGOrchestrator:
         self.vector_db = NotionVectorDB(db_path)
         self.chunker = DocumentChunker()
 
-    async def index_pages(self, pages: List[Dict[str, Any]]):
+    async def index_pages(self, pages: list[dict[str, Any]]):
         """Chunk and index a list of Notion pages."""
         all_chunks = []
         for page in pages:
@@ -30,6 +32,6 @@ class RAGOrchestrator:
                 chunks_added=len(all_chunks),
             )
 
-    async def semantic_search(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+    async def semantic_search(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
         """Find relevant Notion context for a query."""
         return self.vector_db.search(query, limit=limit)

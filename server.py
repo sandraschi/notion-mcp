@@ -14,27 +14,27 @@ Status: Production-Ready (SOTA 2026)
 import asyncio
 import os
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import structlog
 import yaml
-from fastapi import FastAPI, Body, Request
+from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from notion_mcp.plugins import PluginManager
 from fastmcp import FastMCP
 from fastmcp.server import create_proxy
 from pydantic import Field
 
+from notion_mcp import workers as notion_workers
+from notion_mcp.automations import AutomationManager
+from notion_mcp.client import NotionClient
+from notion_mcp.collaboration import CollaborationManager
+from notion_mcp.databases import DatabaseManager
+from notion_mcp.pages import PageManager
+from notion_mcp.plugins import PluginManager
+from notion_mcp.rag.orchestrator import RAGOrchestrator
 from notion_mcp.transport import (
     run_server_async,
 )
-from notion_mcp.client import NotionClient
-from notion_mcp.pages import PageManager
-from notion_mcp.databases import DatabaseManager
-from notion_mcp.collaboration import CollaborationManager
-from notion_mcp.automations import AutomationManager
-from notion_mcp import workers as notion_workers
-from notion_mcp.rag.orchestrator import RAGOrchestrator
 
 # Configure structured logging (JSON to stderr only)
 structlog.configure(
@@ -59,11 +59,11 @@ logger = structlog.get_logger(__name__)
 
 
 # Load configuration with Austrian context
-def load_config() -> Dict[str, Any]:
+def load_config() -> dict[str, Any]:
     """Load configuration from YAML files with Vienna defaults"""
     config_path = os.path.join(os.path.dirname(__file__), "config", "settings.yaml")
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = yaml.safe_load(f)
         logger.info("Configuration loaded", config_path=config_path)
         return config
@@ -195,16 +195,12 @@ async def install_plugin(plugin_id: str):
     # Simulation: Write an empty py file to plugins dir
     path = os.path.join(plugin_manager.plugins_dir, f"{plugin_id}.py")
     with open(path, "w") as f:
-        f.write(
-            f"# Plugin: {plugin_id}\ndef run():\n    print('{plugin_id} running')\n"
-        )
+        f.write(f"# Plugin: {plugin_id}\ndef run():\n    print('{plugin_id} running')\n")
     return {"success": True, "message": f"Plugin {plugin_id} installed!"}
 
 
 @app.post("/api/import")
-async def import_data(
-    file_path: str = Body(..., embed=True), target_id: str = Body(..., embed=True)
-):
+async def import_data(file_path: str = Body(..., embed=True), target_id: str = Body(..., embed=True)):
     """API endpoint for data migration."""
     try:
         initialize_notion_client()
@@ -249,9 +245,7 @@ async def discover_llms():
     # Check Ollama
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(
-                "http://localhost:11434/api/tags", timeout=1
-            ) as resp:
+            async with session.get("http://localhost:11434/api/tags", timeout=1) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     for model in data.get("models", []):
@@ -268,9 +262,7 @@ async def discover_llms():
     # Check LM Studio
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(
-                "http://localhost:1234/v1/models", timeout=1
-            ) as resp:
+            async with session.get("http://localhost:1234/v1/models", timeout=1) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     for model in data.get("data", []):
@@ -294,14 +286,10 @@ async def semantic_search(query: str = Body(..., embed=True)):
 
 
 @app.post("/api/chat")
-async def chat_interaction(
-    message: str = Body(..., embed=True), model_url: Optional[str] = None
-):
+async def chat_interaction(message: str = Body(..., embed=True), model_url: str | None = None):
     """RAG-powered chat with local LLM integration."""
     context = await rag.semantic_search(message, limit=3)
-    context_text = "\n".join(
-        [f"Source: {c['title']}\nContent: {c['content']}" for c in context]
-    )
+    context_text = "\n".join([f"Source: {c['title']}\nContent: {c['content']}" for c in context])
 
     prompt = f"Context from Notion:\n{context_text}\n\nUser Question: {message}\n\nPlease answer based on the context."
     logger.debug("Chat prompt construction finished", prompt_preview=prompt[:100])
@@ -317,7 +305,6 @@ async def chat_interaction(
 async def notion_webhook_receiver(request: Request):
     """Receive Notion webhook events (verification + content events)."""
     initialize_notion_client()
-    import json as _json
     body = await request.json()
     headers = dict(request.headers)
     result = await automation_manager.receive_webhook_event(headers, body)
@@ -385,30 +372,16 @@ def initialize_notion_client():
 
 @mcp.tool()
 async def manage_notion_data(
-    operation: str = Field(
-        description="CRUD operation: create, retrieve, update, archive, restore"
-    ),
+    operation: str = Field(description="CRUD operation: create, retrieve, update, archive, restore"),
     entity_type: str = Field(description="Entity type: page, data_source, block"),
-    entity_id: Optional[str] = Field(
-        default=None, description="Target entity ID (required except for create)"
-    ),
-    parent_id: Optional[str] = Field(
-        default=None, description="Parent ID (required for create)"
-    ),
-    title: Optional[str] = Field(default=None, description="Title/Name for the entity"),
-    content: Optional[str] = Field(
-        default=None, description="Content (text or block formatted)"
-    ),
-    properties: Optional[Dict[str, Any]] = Field(
-        default=None, description="Structured properties"
-    ),
-    children: Optional[List[Dict[str, Any]]] = Field(
-        default=None, description="Child blocks"
-    ),
-    extra_params: Optional[Dict[str, Any]] = Field(
-        default=None, description="Advanced API parameters"
-    ),
-) -> Dict[str, Any]:
+    entity_id: str | None = Field(default=None, description="Target entity ID (required except for create)"),
+    parent_id: str | None = Field(default=None, description="Parent ID (required for create)"),
+    title: str | None = Field(default=None, description="Title/Name for the entity"),
+    content: str | None = Field(default=None, description="Content (text or block formatted)"),
+    properties: dict[str, Any] | None = Field(default=None, description="Structured properties"),
+    children: list[dict[str, Any]] | None = Field(default=None, description="Child blocks"),
+    extra_params: dict[str, Any] | None = Field(default=None, description="Advanced API parameters"),
+) -> dict[str, Any]:
     """Consolidated CRUD management for Notion Pages, Data Sources, and Blocks."""
     try:
         initialize_notion_client()
@@ -465,13 +438,9 @@ async def manage_notion_data(
 
         if operation == "update":
             if entity_type == "page":
-                await page_manager.update_page(
-                    entity_id, title=title, content=content, properties=properties
-                )
+                await page_manager.update_page(entity_id, title=title, content=content, properties=properties)
             elif entity_type == "data_source":
-                await db_manager.update_database(
-                    entity_id, title=title, properties=properties
-                )
+                await db_manager.update_database(entity_id, title=title, properties=properties)
             else:
                 return {
                     "success": False,
@@ -495,22 +464,18 @@ async def manage_notion_data(
         return {"success": False, "error": f"Unknown operation: {operation}"}
 
     except Exception as e:
-        logger.error(
-            f"manage_notion_data failed ({operation} {entity_type})", error=str(e)
-        )
+        logger.error(f"manage_notion_data failed ({operation} {entity_type})", error=str(e))
         return {"success": False, "error": str(e)}
 
 
 @mcp.tool()
 async def query_data_source(
     data_source_id: str = Field(description="Data source ID to query"),
-    filter: Optional[Dict[str, Any]] = Field(default=None, description="Query filter"),
-    sorts: Optional[List[Dict[str, Any]]] = Field(
-        default=None, description="Sort list"
-    ),
+    filter: dict[str, Any] | None = Field(default=None, description="Query filter"),
+    sorts: list[dict[str, Any]] | None = Field(default=None, description="Sort list"),
     limit: int = Field(default=50, description="Max results"),
-    cursor: Optional[str] = Field(default=None, description="Pagination cursor"),
-) -> Dict[str, Any]:
+    cursor: str | None = Field(default=None, description="Pagination cursor"),
+) -> dict[str, Any]:
     """High-speed exploration of structured data sources with complex filtering."""
     try:
         initialize_notion_client()
@@ -540,7 +505,7 @@ async def search_notion_knowledge(
         description="Search mode: semantic (RAG), keyword (API), hybrid",
     ),
     limit: int = Field(default=10, description="Max results"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Powerful SOTA search leveraging both Notion API and local RAG pipeline."""
     try:
         initialize_notion_client()
@@ -566,14 +531,12 @@ async def search_notion_knowledge(
 
 @mcp.tool()
 async def sync_rag_index(
-    data_source_ids: Optional[List[str]] = Field(
+    data_source_ids: list[str] | None = Field(
         default=None,
         description="Specific IDs to index. If None, performs workspace scan",
     ),
-    force_rebuild: bool = Field(
-        default=False, description="Rebuild index from scratch"
-    ),
-) -> Dict[str, Any]:
+    force_rebuild: bool = Field(default=False, description="Rebuild index from scratch"),
+) -> dict[str, Any]:
     """Synchronize Notion workspace knowledge to local LanceDB vector store."""
     try:
         initialize_notion_client()
@@ -593,23 +556,15 @@ async def sync_rag_index(
 
 @mcp.tool()
 async def create_page(
-    title: str = Field(
-        description="Page title (supports German characters: ä, ö, ü, ß)"
-    ),
-    content: str = Field(
-        default="", description="Page content in Notion blocks format or plain text"
-    ),
-    parent_id: Optional[str] = Field(
+    title: str = Field(description="Page title (supports German characters: ä, ö, ü, ß)"),
+    content: str = Field(default="", description="Page content in Notion blocks format or plain text"),
+    parent_id: str | None = Field(
         default=None,
         description="Parent page/database ID. If not provided, creates in workspace root",
     ),
-    properties: Optional[Dict[str, Any]] = Field(
-        default=None, description="Page properties if parent is a database"
-    ),
-    children: Optional[List[Dict[str, Any]]] = Field(
-        default=None, description="Child blocks to add to the page"
-    ),
-) -> Dict[str, Any]:
+    properties: dict[str, Any] | None = Field(default=None, description="Page properties if parent is a database"),
+    children: list[dict[str, Any]] | None = Field(default=None, description="Child blocks to add to the page"),
+) -> dict[str, Any]:
     """Create a new Notion page with content, properties, and Austrian efficiency."""
     try:
         initialize_notion_client()  # Ensure client is initialized
@@ -640,13 +595,11 @@ async def create_page(
 @mcp.tool()
 async def update_page(
     page_id: str = Field(description="Page ID to update"),
-    title: Optional[str] = Field(default=None, description="New page title"),
-    content: Optional[str] = Field(default=None, description="New page content"),
-    properties: Optional[Dict[str, Any]] = Field(
-        default=None, description="Updated properties"
-    ),
-    archived: Optional[bool] = Field(default=None, description="Archive status"),
-) -> Dict[str, Any]:
+    title: str | None = Field(default=None, description="New page title"),
+    content: str | None = Field(default=None, description="New page content"),
+    properties: dict[str, Any] | None = Field(default=None, description="Updated properties"),
+    archived: bool | None = Field(default=None, description="Archive status"),
+) -> dict[str, Any]:
     """Update existing Notion page with Austrian efficiency."""
     try:
         result = await page_manager.update_page(
@@ -660,9 +613,7 @@ async def update_page(
         return {
             "success": True,
             "page_id": page_id,
-            "updated_fields": [
-                k for k, v in locals().items() if v is not None and k != "page_id"
-            ],
+            "updated_fields": [k for k, v in locals().items() if v is not None and k != "page_id"],
             "message": "Page updated with Austrian efficiency! ✅",
         }
     except Exception as e:
@@ -679,7 +630,7 @@ async def get_page_content(
     page_id: str = Field(description="Page ID to retrieve"),
     include_children: bool = Field(default=True, description="Include child blocks"),
     block_depth: int = Field(default=10, description="Maximum depth for nested blocks"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Retrieve complete page content with Austrian efficiency optimization."""
     try:
         result = await page_manager.get_page_content(
@@ -703,15 +654,13 @@ async def get_page_content(
 @mcp.tool()
 async def search_pages(
     query: str = Field(description="Search query (natural language)"),
-    filter_by_type: Optional[str] = Field(
-        default=None, description="Filter by object type: page, database"
-    ),
+    filter_by_type: str | None = Field(default=None, description="Filter by object type: page, database"),
     sort_by: str = Field(
         default="last_edited_time",
         description="Sort field: last_edited_time, created_time",
     ),
     limit: int = Field(default=10, description="Maximum results to return"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Natural language search across entire Notion workspace."""
     try:
         results = await page_manager.search_pages(
@@ -737,13 +686,9 @@ async def search_pages(
 @mcp.tool()
 async def archive_page(
     page_id: str = Field(description="Page ID to archive"),
-    permanent_delete: bool = Field(
-        default=False, description="Permanently delete instead of archive"
-    ),
-    backup_first: bool = Field(
-        default=True, description="Create backup before deletion"
-    ),
-) -> Dict[str, Any]:
+    permanent_delete: bool = Field(default=False, description="Permanently delete instead of archive"),
+    backup_first: bool = Field(default=True, description="Create backup before deletion"),
+) -> dict[str, Any]:
     """Safely archive or delete pages with Austrian efficiency confirmations."""
     try:
         await page_manager.archive_page(
@@ -781,12 +726,10 @@ async def archive_page(
 async def create_database(
     title: str = Field(description="Database title"),
     parent_id: str = Field(description="Parent page ID where database will be created"),
-    properties_schema: Dict[str, Any] = Field(description="Database properties schema"),
-    icon: Optional[str] = Field(
-        default=None, description="Database icon (emoji or external URL)"
-    ),
-    cover: Optional[str] = Field(default=None, description="Database cover image URL"),
-) -> Dict[str, Any]:
+    properties_schema: dict[str, Any] = Field(description="Database properties schema"),
+    icon: str | None = Field(default=None, description="Database icon (emoji or external URL)"),
+    cover: str | None = Field(default=None, description="Database cover image URL"),
+) -> dict[str, Any]:
     """Create databases with custom property schemas."""
     try:
         result = await db_manager.create_database(
@@ -817,15 +760,11 @@ async def create_database(
 @mcp.tool()
 async def query_database(
     database_id: str = Field(description="Database ID to query"),
-    filter: Optional[Dict[str, Any]] = Field(
-        default=None, description="Query filter conditions"
-    ),
-    sorts: Optional[List[Dict[str, Any]]] = Field(
-        default=None, description="Sort configuration"
-    ),
+    filter: dict[str, Any] | None = Field(default=None, description="Query filter conditions"),
+    sorts: list[dict[str, Any]] | None = Field(default=None, description="Sort configuration"),
     limit: int = Field(default=100, description="Maximum results"),
-    cursor: Optional[str] = Field(default=None, description="Pagination cursor"),
-) -> Dict[str, Any]:
+    cursor: str | None = Field(default=None, description="Pagination cursor"),
+) -> dict[str, Any]:
     """Query databases with complex filters and sorts."""
     try:
         results = await db_manager.query_database(
@@ -861,12 +800,10 @@ async def query_database(
 @mcp.tool()
 async def create_database_entry(
     database_id: str = Field(description="Database ID to add entry to"),
-    properties: Dict[str, Any] = Field(description="Entry properties"),
+    properties: dict[str, Any] = Field(description="Entry properties"),
     content: str = Field(default="", description="Entry content"),
-    children: Optional[List[Dict[str, Any]]] = Field(
-        default=None, description="Child blocks"
-    ),
-) -> Dict[str, Any]:
+    children: list[dict[str, Any]] | None = Field(default=None, description="Child blocks"),
+) -> dict[str, Any]:
     """Add entries with all property types (text, select, date, etc.)"""
     try:
         result = await db_manager.create_database_entry(
@@ -895,12 +832,10 @@ async def create_database_entry(
 @mcp.tool()
 async def update_database_entry(
     page_id: str = Field(description="Entry page ID to update"),
-    properties: Optional[Dict[str, Any]] = Field(
-        default=None, description="Updated properties"
-    ),
-    content: Optional[str] = Field(default=None, description="Updated content"),
-    archived: Optional[bool] = Field(default=None, description="Archive status"),
-) -> Dict[str, Any]:
+    properties: dict[str, Any] | None = Field(default=None, description="Updated properties"),
+    content: str | None = Field(default=None, description="Updated content"),
+    archived: bool | None = Field(default=None, description="Archive status"),
+) -> dict[str, Any]:
     """Update existing database entries and properties."""
     try:
         await db_manager.update_database_entry(
@@ -925,13 +860,9 @@ async def update_database_entry(
 @mcp.tool()
 async def get_database_schema(
     database_id: str = Field(description="Database ID to analyze"),
-    include_statistics: bool = Field(
-        default=False, description="Include usage statistics"
-    ),
-    property_details: bool = Field(
-        default=True, description="Include detailed property information"
-    ),
-) -> Dict[str, Any]:
+    include_statistics: bool = Field(default=False, description="Include usage statistics"),
+    property_details: bool = Field(default=True, description="Include detailed property information"),
+) -> dict[str, Any]:
     """Retrieve database structure, properties, and metadata."""
     try:
         result = await db_manager.get_database_schema(
@@ -958,13 +889,9 @@ async def get_database_schema(
 async def bulk_import_data(
     database_id: str = Field(description="Target database ID"),
     data_source: str = Field(description="CSV or JSON data to import"),
-    mapping: Optional[Dict[str, str]] = Field(
-        default=None, description="Field mapping (source -> target)"
-    ),
-    merge_strategy: str = Field(
-        default="create_new", description="How to handle existing data"
-    ),
-) -> Dict[str, Any]:
+    mapping: dict[str, str] | None = Field(default=None, description="Field mapping (source -> target)"),
+    merge_strategy: str = Field(default="create_new", description="How to handle existing data"),
+) -> dict[str, Any]:
     """Import CSV/JSON data efficiently into databases."""
     try:
         result = await db_manager.bulk_import_data(
@@ -1000,13 +927,9 @@ async def bulk_import_data(
 async def add_comment(
     page_id: str = Field(description="Page or block ID to comment on"),
     content: str = Field(description="Comment content"),
-    parent_comment_id: Optional[str] = Field(
-        default=None, description="Parent comment for threaded discussions"
-    ),
-    rich_text: Optional[List[Dict[str, Any]]] = Field(
-        default=None, description="Rich text formatting"
-    ),
-) -> Dict[str, Any]:
+    parent_comment_id: str | None = Field(default=None, description="Parent comment for threaded discussions"),
+    rich_text: list[dict[str, Any]] | None = Field(default=None, description="Rich text formatting"),
+) -> dict[str, Any]:
     """Add comments to pages or specific blocks."""
     try:
         result = await collab_manager.add_comment(
@@ -1033,12 +956,10 @@ async def add_comment(
 @mcp.tool()
 async def get_comments(
     page_id: str = Field(description="Page ID to get comments from"),
-    include_resolved: bool = Field(
-        default=False, description="Include resolved comments"
-    ),
+    include_resolved: bool = Field(default=False, description="Include resolved comments"),
     sort_by: str = Field(default="created_time", description="Sort field"),
     limit: int = Field(default=50, description="Maximum comments to return"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Retrieve page/block discussions and comment threads."""
     try:
         results = await collab_manager.get_comments(
@@ -1066,11 +987,9 @@ async def get_comments(
 @mcp.tool()
 async def get_workspace_users(
     include_inactive: bool = Field(default=False, description="Include inactive users"),
-    permission_level: Optional[str] = Field(
-        default=None, description="Filter by permission level"
-    ),
+    permission_level: str | None = Field(default=None, description="Filter by permission level"),
     sort_by: str = Field(default="name", description="Sort field"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """List workspace users, permissions, and activity."""
     try:
         results = await collab_manager.get_workspace_users(
@@ -1100,12 +1019,10 @@ async def get_workspace_users(
 @mcp.tool()
 async def setup_automation(
     trigger_type: str = Field(description="Automation trigger type"),
-    conditions: Dict[str, Any] = Field(description="Trigger conditions"),
-    actions: List[Dict[str, Any]] = Field(description="Actions to perform"),
-    webhook_url: Optional[str] = Field(
-        default=None, description="Optional webhook URL"
-    ),
-) -> Dict[str, Any]:
+    conditions: dict[str, Any] = Field(description="Trigger conditions"),
+    actions: list[dict[str, Any]] = Field(description="Actions to perform"),
+    webhook_url: str | None = Field(default=None, description="Optional webhook URL"),
+) -> dict[str, Any]:
     """Configure a Notion automation with webhook integration."""
     initialize_notion_client()
     return await automation_manager.setup_automation(
@@ -1119,9 +1036,9 @@ async def setup_automation(
 @mcp.tool()
 async def sync_external_data(
     external_source: str = Field(description="External data source type"),
-    sync_config: Dict[str, Any] = Field(description="Sync configuration"),
+    sync_config: dict[str, Any] = Field(description="Sync configuration"),
     update_frequency: str = Field(default="daily", description="Update frequency"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create synced databases from external tools."""
     initialize_notion_client()
     return await automation_manager.sync_external_data(
@@ -1136,10 +1053,8 @@ async def generate_ai_summary(
     page_id: str = Field(description="Page ID to analyze"),
     summary_type: str = Field(default="comprehensive", description="Summary type"),
     length: str = Field(default="medium", description="Summary length"),
-    focus_areas: Optional[List[str]] = Field(
-        default=None, description="Areas to focus on"
-    ),
-) -> Dict[str, Any]:
+    focus_areas: list[str] | None = Field(default=None, description="Areas to focus on"),
+) -> dict[str, Any]:
     """Summarize page content using LLM API or fallback."""
     initialize_notion_client()
     return await automation_manager.generate_ai_summary(
@@ -1156,7 +1071,7 @@ async def export_workspace_data(
     format: str = Field(default="json", description="Export format"),
     include_metadata: bool = Field(default=True, description="Include metadata"),
     compression: bool = Field(default=True, description="Compress export"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Backup and export functionality with multiple formats."""
     initialize_notion_client()
     return await automation_manager.export_workspace_data(
@@ -1168,10 +1083,8 @@ async def export_workspace_data(
 async def import_workspace_data(
     source_path: str = Field(description="Local path to Markdown/JSON file"),
     target_parent_id: str = Field(description="Parent Page/Database ID in Notion"),
-    import_type: str = Field(
-        default="markdown", description="Type of data: markdown or json"
-    ),
-) -> Dict[str, Any]:
+    import_type: str = Field(default="markdown", description="Type of data: markdown or json"),
+) -> dict[str, Any]:
     """Import external data into Notion workspace."""
     initialize_notion_client()
     return await automation_manager.import_workspace_data(
@@ -1183,11 +1096,9 @@ async def import_workspace_data(
 
 @mcp.tool()
 async def orchestrate_automation(
-    operation: str = Field(
-        description="Automation operation: setup, sync_external, report, export"
-    ),
-    config: Dict[str, Any] = Field(description="Automation configuration"),
-) -> Dict[str, Any]:
+    operation: str = Field(description="Automation operation: setup, sync_external, report, export"),
+    config: dict[str, Any] = Field(description="Automation configuration"),
+) -> dict[str, Any]:
     """SOTA Orchestrator for Notion automations, bulk syncing, and reporting."""
     initialize_notion_client()
     ops = {
@@ -1208,7 +1119,7 @@ async def orchestrate_automation(
 @mcp.tool()
 async def verify_webhook(
     verification_token: str = Field(description="Verification token from Notion's webhook POST"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Store a webhook verification token from Notion."""
     initialize_notion_client()
     return await automation_manager.verify_webhook_subscription(verification_token)
@@ -1217,8 +1128,8 @@ async def verify_webhook(
 @mcp.tool()
 async def list_webhook_events(
     limit: int = Field(default=50, description="Max events to return"),
-    event_type: Optional[str] = Field(default=None, description="Filter by event type"),
-) -> Dict[str, Any]:
+    event_type: str | None = Field(default=None, description="Filter by event type"),
+) -> dict[str, Any]:
     """List received Notion webhook events."""
     initialize_notion_client()
     events = await automation_manager.list_webhook_events(limit=limit, event_type=event_type)
@@ -1230,16 +1141,14 @@ async def list_webhook_events(
 
 @mcp.tool()
 async def deploy_worker(
-    project_dir: Optional[str] = Field(
-        default=None, description="Worker project directory (default: current dir)"
-    ),
-) -> Dict[str, Any]:
+    project_dir: str | None = Field(default=None, description="Worker project directory (default: current dir)"),
+) -> dict[str, Any]:
     """Deploy a Notion Worker. Requires ntn CLI installed."""
     return await notion_workers.deploy_worker(project_dir)
 
 
 @mcp.tool()
-async def list_workers() -> Dict[str, Any]:
+async def list_workers() -> dict[str, Any]:
     """List deployed Notion Workers. Requires ntn CLI."""
     return await notion_workers.list_workers()
 
@@ -1247,39 +1156,33 @@ async def list_workers() -> Dict[str, Any]:
 @mcp.tool()
 async def scaffold_worker(
     project_dir: str = Field(description="Directory to scaffold the worker project"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Scaffold a new Notion Worker project. Requires ntn CLI."""
     return await notion_workers.scaffold_worker(project_dir)
 
 
 @mcp.tool()
 async def worker_logs(
-    worker_name: Optional[str] = Field(default=None, description="Worker name filter"),
+    worker_name: str | None = Field(default=None, description="Worker name filter"),
     tail: int = Field(default=50, description="Number of log lines"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Fetch logs from a deployed Notion Worker."""
     return await notion_workers.worker_logs(worker_name=worker_name, tail=tail)
 
 
 @mcp.tool()
-async def check_ntn() -> Dict[str, Any]:
+async def check_ntn() -> dict[str, Any]:
     """Check if Notion CLI (ntn) is installed."""
     return await notion_workers.check_ntn_version()
 
 
 @mcp.tool()
 async def orchestrate_workers(
-    operation: str = Field(
-        description="Worker operation: deploy, list, scaffold, logs, check"
-    ),
-    project_dir: Optional[str] = Field(
-        default=None, description="Project directory (for deploy/scaffold)"
-    ),
-    worker_name: Optional[str] = Field(
-        default=None, description="Worker name (for logs)"
-    ),
+    operation: str = Field(description="Worker operation: deploy, list, scaffold, logs, check"),
+    project_dir: str | None = Field(default=None, description="Project directory (for deploy/scaffold)"),
+    worker_name: str | None = Field(default=None, description="Worker name (for logs)"),
     tail: int = Field(default=50, description="Log lines (for logs)"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Orchestrate Notion Workers operations."""
     ops = {
         "deploy": lambda: notion_workers.deploy_worker(project_dir),

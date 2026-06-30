@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Body, Depends
+from fastapi import Body, Depends, FastAPI
 from fastmcp import FastMCP
+
 from .ai import AIRouter
 from .auth import authenticate
 

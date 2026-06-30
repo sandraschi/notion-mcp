@@ -48,9 +48,7 @@ class NotionClient:
                 "Notion token is required. Set NOTION_TOKEN (internal integration) or NOTION_PAT (personal access token)."
             )
 
-        self.client = AsyncClient(
-            auth=token, notion_version=version, timeout_ms=timeout * 1000
-        )
+        self.client = AsyncClient(auth=token, notion_version=version, timeout_ms=timeout * 1000)
 
         self.timezone = pytz.timezone(timezone_str)
         self.version = version
@@ -61,9 +59,7 @@ class NotionClient:
         self.request_count = 0
         self.error_count = 0
 
-        logger.info(
-            f"Notion client initialized ({token_type}) - Vienna timezone: {timezone_str}, API: {version}"
-        )
+        logger.info(f"Notion client initialized ({token_type}) - Vienna timezone: {timezone_str}, API: {version}")
 
     async def _make_request(self, method: str, *args, **kwargs) -> Any:
         """
@@ -72,36 +68,32 @@ class NotionClient:
         self.request_count += 1
 
         try:
-            # Get the method from the client
-            client_method = getattr(self.client, method)
+            # Resolve dotted method names for nested attribute access
+            parts = method.split(".")
+            client_method = self.client
+            for part in parts:
+                client_method = getattr(client_method, part)
             result = await client_method(*args, **kwargs)
 
-            logger.debug(
-                f"API request successful: {method} (Total: {self.request_count})"
-            )
+            logger.debug(f"API request successful: {method} (Total: {self.request_count})")
             return result
 
         except APIResponseError as e:
             self.error_count += 1
-            logger.error(f"Notion API error: {e.code} - {e.message}")
+            logger.error(f"Notion API error: {e.code} - {getattr(e, 'body', str(e))}")
 
             # Austrian efficiency: Direct error communication
+            msg = getattr(e, "body", str(e))
             if e.code == APIErrorCode.Unauthorized:
-                raise Exception(
-                    "Notion API token is invalid or expired. Check your integration settings."
-                )
+                raise Exception("Notion API token is invalid or expired. Check your integration settings.")
             elif e.code == APIErrorCode.RateLimited:
-                raise Exception(
-                    "Rate limit exceeded. Please wait before making more requests."
-                )
+                raise Exception("Rate limit exceeded. Please wait before making more requests.")
             elif e.code == APIErrorCode.ObjectNotFound:
-                raise Exception(
-                    "The requested page/database was not found. Check the ID and permissions."
-                )
+                raise Exception("The requested page/database was not found. Check the ID and permissions.")
             elif e.code == APIErrorCode.ValidationError:
-                raise Exception(f"Invalid request data: {e.message}")
+                raise Exception(f"Invalid request data: {msg}")
             else:
-                raise Exception(f"Notion API error ({e.code}): {e.message}")
+                raise Exception(f"Notion API error ({e.code}): {msg}")
 
         except Exception as e:
             self.error_count += 1
@@ -171,9 +163,7 @@ class NotionClient:
         return {
             "total_requests": self.request_count,
             "total_errors": self.error_count,
-            "success_rate": (self.request_count - self.error_count)
-            / max(self.request_count, 1)
-            * 100,
+            "success_rate": (self.request_count - self.error_count) / max(self.request_count, 1) * 100,
             "current_time": self.format_austrian_date(self.get_vienna_time()),
             "timezone": str(self.timezone),
             "version": self.version,
@@ -191,9 +181,7 @@ class NotionClient:
         database_id = self.validate_page_id(database_id)
         return await self._make_request("databases.retrieve", database_id=database_id)
 
-    async def get_block_children(
-        self, block_id: str, start_cursor: str | None = None
-    ) -> dict[str, Any]:
+    async def get_block_children(self, block_id: str, start_cursor: str | None = None) -> dict[str, Any]:
         """Get block children with pagination."""
         block_id = self.validate_page_id(block_id)
         kwargs = {"block_id": block_id}
@@ -240,25 +228,17 @@ class NotionClient:
     async def update_database(self, database_id: str, **kwargs) -> dict[str, Any]:
         """Update database with ID validation."""
         database_id = self.validate_page_id(database_id)
-        return await self._make_request(
-            "databases.update", database_id=database_id, **kwargs
-        )
+        return await self._make_request("databases.update", database_id=database_id, **kwargs)
 
     async def query_database(self, database_id: str, **kwargs) -> dict[str, Any]:
         """Query database with ID validation."""
         database_id = self.validate_page_id(database_id)
-        return await self._make_request(
-            "databases.query", database_id=database_id, **kwargs
-        )
+        return await self._make_request("databases.query", database_id=database_id, **kwargs)
 
-    async def append_block_children(
-        self, block_id: str, children: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    async def append_block_children(self, block_id: str, children: list[dict[str, Any]]) -> dict[str, Any]:
         """Append blocks with validation."""
         block_id = self.validate_page_id(block_id)
-        return await self._make_request(
-            "blocks.children.append", block_id=block_id, children=children
-        )
+        return await self._make_request("blocks.children.append", block_id=block_id, children=children)
 
     async def get_users(self, start_cursor: str | None = None) -> dict[str, Any]:
         """Get workspace users."""
@@ -306,11 +286,7 @@ class NotionClient:
         page_id = self.validate_page_id(page_id)
         return await self._make_request("pages.retrieve_markdown", page_id=page_id)
 
-    async def update_page_markdown(
-        self, page_id: str, markdown: str
-    ) -> dict[str, Any]:
+    async def update_page_markdown(self, page_id: str, markdown: str) -> dict[str, Any]:
         """Update page content using enhanced markdown."""
         page_id = self.validate_page_id(page_id)
-        return await self._make_request(
-            "pages.update_markdown", page_id=page_id, markdown=markdown
-        )
+        return await self._make_request("pages.update_markdown", page_id=page_id, markdown=markdown)

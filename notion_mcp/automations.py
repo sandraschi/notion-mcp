@@ -38,9 +38,7 @@ class AutomationManager:
         EVENTS_DIR.mkdir(parents=True, exist_ok=True)
         return EVENTS_DIR
 
-    async def receive_webhook_event(
-        self, headers: dict, body: dict
-    ) -> dict:
+    async def receive_webhook_event(self, headers: dict, body: dict) -> dict:
         """
         Process an incoming Notion webhook event.
         Called by the FastAPI endpoint when Notion POSTs an event.
@@ -68,20 +66,20 @@ class AutomationManager:
             "event_id": body.get("id"),
         }
 
-    def verify_signature(
-        self, body: bytes, signature_header: str, verification_token: str
-    ) -> bool:
+    def verify_signature(self, body: bytes, signature_header: str, verification_token: str) -> bool:
         """
         Verify Notion webhook HMAC-SHA256 signature.
         """
         import hashlib
         import hmac
 
-        expected = f"sha256={hmac.new(
-            verification_token.encode("utf-8"),
-            body,
-            hashlib.sha256,
-        ).hexdigest()}"
+        expected = f"sha256={
+            hmac.new(
+                verification_token.encode('utf-8'),
+                body,
+                hashlib.sha256,
+            ).hexdigest()
+        }"
         return hmac.compare_digest(expected, signature_header)
 
     def _store_event(self, event: dict) -> str:
@@ -93,9 +91,7 @@ class AutomationManager:
             json.dump(event, f, indent=2, default=str)
         return str(path)
 
-    async def list_webhook_events(
-        self, limit: int = 50, event_type: str | None = None
-    ) -> list[dict]:
+    async def list_webhook_events(self, limit: int = 50, event_type: str | None = None) -> list[dict]:
         """List stored webhook events."""
         self.ensure_events_dir()
         events = []
@@ -127,11 +123,18 @@ class AutomationManager:
             automation_id = f"automation_{int(datetime.now().timestamp())}"
 
             valid_triggers = [
-                "page_created", "page_updated", "page_deleted",
-                "data_source_content_updated", "data_source_schema_updated",
-                "comment_created", "comment_deleted", "comment_updated",
-                "database_created", "database_deleted",
-                "page_locked", "page_unlocked",
+                "page_created",
+                "page_updated",
+                "page_deleted",
+                "data_source_content_updated",
+                "data_source_schema_updated",
+                "comment_created",
+                "comment_deleted",
+                "comment_updated",
+                "database_created",
+                "database_deleted",
+                "page_locked",
+                "page_unlocked",
             ]
             if trigger_type not in valid_triggers:
                 return {
@@ -146,9 +149,7 @@ class AutomationManager:
                 "conditions": conditions,
                 "actions": actions,
                 "webhook_url": suggested_url,
-                "created_time": self.client.format_austrian_date(
-                    self.client.get_vienna_time()
-                ),
+                "created_time": self.client.format_austrian_date(self.client.get_vienna_time()),
                 "status": "configured",
             }
 
@@ -176,13 +177,13 @@ class AutomationManager:
         Store a verification token received from Notion's webhook UI.
         The token was sent as a POST to your webhook endpoint.
         """
-        stored_path = self._store_event({
-            "type": "verification",
-            "token": verification_token,
-            "verified_at": self.client.format_austrian_date(
-                self.client.get_vienna_time()
-            ),
-        })
+        stored_path = self._store_event(
+            {
+                "type": "verification",
+                "token": verification_token,
+                "verified_at": self.client.format_austrian_date(self.client.get_vienna_time()),
+            }
+        )
         return {
             "success": True,
             "message": "Verification token stored. Paste it in Notion's Webhook UI to complete setup.",
@@ -204,13 +205,10 @@ class AutomationManager:
         """
         try:
             from .pages import PageManager
+
             page_manager = PageManager(self.client)
-            page_content = await page_manager.get_page_content(
-                page_id, include_children=True
-            )
-            text_content = self._extract_text_from_blocks(
-                page_content.get("blocks", [])
-            )
+            page_content = await page_manager.get_page_content(page_id, include_children=True)
+            text_content = self._extract_text_from_blocks(page_content.get("blocks", []))
 
             if not text_content.strip():
                 return {
@@ -225,13 +223,9 @@ class AutomationManager:
 
             llm_url = os.getenv("LLM_API_URL", "")
             if llm_url:
-                summary = await self._call_llm(
-                    text_content, summary_type, length, focus_areas, llm_url
-                )
+                summary = await self._call_llm(text_content, summary_type, length, focus_areas, llm_url)
             else:
-                summary = self._generate_mock_summary(
-                    text_content, summary_type, length
-                )
+                summary = self._generate_mock_summary(text_content, summary_type, length)
                 summary["_note"] = "Mock summary. Set LLM_API_URL env var for real AI summaries."
 
             result = {
@@ -241,9 +235,7 @@ class AutomationManager:
                     "key_points": summary.get("key_points", []),
                     "word_count": len(text_content.split()),
                     "reading_time_minutes": max(1, len(text_content.split()) // 200),
-                    "analysis_time": self.client.format_austrian_date(
-                        self.client.get_vienna_time()
-                    ),
+                    "analysis_time": self.client.format_austrian_date(self.client.get_vienna_time()),
                 },
             }
             logger.info(f"AI summary generated for page: {page_id}")
@@ -287,15 +279,14 @@ class AutomationManager:
                         "temperature": 0.3,
                         "stream": False,
                     },
-                    headers={"Authorization": f"Bearer {api_key}"}
-                    if api_key != "ollama"
-                    else {},
+                    headers={"Authorization": f"Bearer {api_key}"} if api_key != "ollama" else {},
                 )
                 resp.raise_for_status()
                 data = resp.json()
                 content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
                 # Try to parse JSON from LLM response
                 import json as _json
+
                 try:
                     parsed = _json.loads(content)
                     return {
@@ -347,9 +338,7 @@ class AutomationManager:
         """Backup and export functionality with file persistence."""
         try:
             export_id = f"export_{int(datetime.now().timestamp())}"
-            export_timestamp = self.client.format_austrian_date(
-                self.client.get_vienna_time()
-            )
+            export_timestamp = self.client.format_austrian_date(self.client.get_vienna_time())
 
             export_dir = Path("./exports")
             export_dir.mkdir(parents=True, exist_ok=True)
@@ -358,9 +347,7 @@ class AutomationManager:
             filepath = export_dir / filename
 
             with open(filepath, "w", encoding="utf-8") as f:
-                f.write(
-                    f"Notion Export - {export_timestamp}\nScope: {scope}\nFormat: {format}"
-                )
+                f.write(f"Notion Export - {export_timestamp}\nScope: {scope}\nFormat: {format}")
 
             logger.info(f"Export completed: {export_id} ({format}) to {filepath}")
             return {

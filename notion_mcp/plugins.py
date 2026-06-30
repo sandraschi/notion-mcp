@@ -1,7 +1,8 @@
-import os
 import importlib.util
+import os
+from typing import Any
+
 import structlog
-from typing import List, Dict, Any
 
 logger = structlog.get_logger(__name__)
 
@@ -19,7 +20,7 @@ class PluginManager:
             os.makedirs(self.plugins_dir)
             logger.info("Created plugins directory", path=self.plugins_dir)
 
-    def list_plugins(self) -> List[Dict[str, Any]]:
+    def list_plugins(self) -> list[dict[str, Any]]:
         """List all installed and available plugins."""
         # For now, return a mix of installed and 'market' suggestions
         installed = []

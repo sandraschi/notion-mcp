@@ -40,9 +40,7 @@ def _run_ntn(args: list[str], timeout: int = 60) -> dict:
     except FileNotFoundError:
         return {
             "success": False,
-            "error": (
-                "ntn CLI not found. Install it: curl -fsSL https://ntn.dev | bash"
-            ),
+            "error": ("ntn CLI not found. Install it: curl -fsSL https://ntn.dev | bash"),
         }
     except subprocess.TimeoutExpired:
         return {"success": False, "error": f"ntn command timed out after {timeout}s"}
@@ -96,7 +94,9 @@ async def check_ntn_version() -> dict[str, Any]:
     try:
         result = subprocess.run(
             [_ntn_binary(), "--version"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0:
             return {"success": True, "version": result.stdout.strip()}

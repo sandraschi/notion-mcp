@@ -1,18 +1,15 @@
+from typing import Any
+
 import lancedb
-import numpy as np
 import pyarrow as pa
-from sentence_transformers import SentenceTransformer
-from typing import List, Dict, Any, Optional
-import os
 import structlog
+from sentence_transformers import SentenceTransformer
 
 logger = structlog.get_logger(__name__)
 
 
 class NotionVectorDB:
-    def __init__(
-        self, db_path: str = "./.lancedb", model_name: str = "all-MiniLM-L6-v2"
-    ):
+    def __init__(self, db_path: str = "./.lancedb", model_name: str = "all-MiniLM-L6-v2"):
         self.db_path = db_path
         self.db = lancedb.connect(db_path)
         self.model = SentenceTransformer(model_name)
@@ -40,11 +37,11 @@ class NotionVectorDB:
 
         self.table = self.db.open_table(self.table_name)
 
-    def embed_text(self, text: str) -> List[float]:
+    def embed_text(self, text: str) -> list[float]:
         """Generate embedding vector for text."""
         return self.model.encode(text).tolist()
 
-    def upsert_chunks(self, chunks: List[Dict[str, Any]]):
+    def upsert_chunks(self, chunks: list[dict[str, Any]]):
         """Insert or update chunks with embeddings."""
         data = []
         for chunk in chunks:
@@ -65,7 +62,7 @@ class NotionVectorDB:
             self.table.add(data)
             logger.info("Chunks embedded and stored", count=len(data))
 
-    def search(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+    def search(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
         """Perform semantic search."""
         query_vector = self.embed_text(query)
         results = self.table.search(query_vector).limit(limit).to_list()

@@ -15,6 +15,7 @@ from typing import Any
 
 logger = logging.getLogger("notionmcp.collaboration")
 
+
 class CollaborationManager:
     """
     Comprehensive collaboration management with Austrian efficiency.
@@ -34,18 +35,14 @@ class CollaborationManager:
             return []
 
         # Simple implementation - can be enhanced for mentions, formatting
-        return [{
-            "type": "text",
-            "text": {"content": content},
-            "plain_text": content
-        }]
+        return [{"type": "text", "text": {"content": content}, "plain_text": content}]
 
     async def add_comment(
         self,
         page_id: str,
         content: str,
         parent_comment_id: str | None = None,
-        rich_text: list[dict[str, Any]] | None = None
+        rich_text: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """
         Add comment to page via Notion Comments API.
@@ -83,11 +80,7 @@ class CollaborationManager:
             raise Exception(f"Comment creation failed: {e!s}")
 
     async def get_comments(
-        self,
-        page_id: str,
-        include_resolved: bool = False,
-        sort_by: str = "created_time",
-        limit: int = 50
+        self, page_id: str, include_resolved: bool = False, sort_by: str = "created_time", limit: int = 50
     ) -> list[dict[str, Any]]:
         """
         Retrieve comments from a page via Notion Comments API.
@@ -162,19 +155,16 @@ class CollaborationManager:
         return "".join(parts)
 
     async def get_workspace_users(
-        self,
-        include_inactive: bool = False,
-        permission_level: str | None = None,
-        sort_by: str = "name"
+        self, include_inactive: bool = False, permission_level: str | None = None, sort_by: str = "name"
     ) -> list[dict[str, Any]]:
         """
         List workspace users, permissions, and activity with Austrian efficiency.
-        
+
         Args:
             include_inactive: Include inactive/deactivated users
             permission_level: Filter by permission level
             sort_by: Sort field (name, email, last_active)
-        
+
         Returns:
             List of workspace users with details
         """
@@ -202,7 +192,7 @@ class CollaborationManager:
                     "avatar_url": user.get("avatar_url"),
                     "email": user.get("email", ""),
                     "object": user.get("object"),
-                    "last_active": "Unknown"  # Notion doesn't provide this
+                    "last_active": "Unknown",  # Notion doesn't provide this
                 }
 
                 # Determine if user is active
@@ -236,10 +226,10 @@ class CollaborationManager:
     async def get_user_details(self, user_id: str) -> dict[str, Any]:
         """
         Get detailed information about a specific user with Austrian efficiency.
-        
+
         Args:
             user_id: User ID to retrieve details for
-        
+
         Returns:
             Detailed user information
         """
@@ -254,9 +244,9 @@ class CollaborationManager:
                 "email": user.get("email", ""),
                 "object": user.get("object"),
                 "workspace_role": "Unknown",  # Not available via API
-                "last_active": "Unknown",     # Not available via API
-                "timezone": "Unknown",        # Not available via API
-                "language": "Unknown"         # Not available via API
+                "last_active": "Unknown",  # Not available via API
+                "timezone": "Unknown",  # Not available via API
+                "language": "Unknown",  # Not available via API
             }
 
             logger.info(f"Retrieved user details: {user_id}")
@@ -269,7 +259,7 @@ class CollaborationManager:
     async def get_page_permissions(self, page_id: str) -> dict[str, Any]:
         """
         Get page sharing and permission information (Austrian efficiency placeholder).
-        
+
         Note: Notion API has limited permission querying capabilities.
         This is a placeholder for when/if expanded permission APIs become available.
         """
@@ -284,11 +274,11 @@ class CollaborationManager:
                 "parent": page.get("parent"),
                 "created_by": page.get("created_by"),
                 "last_edited_by": page.get("last_edited_by"),
-                "public_access": "Unknown",     # Not available via API
+                "public_access": "Unknown",  # Not available via API
                 "workspace_access": "Unknown",  # Not available via API
-                "shared_users": "Unknown",      # Not available via API
+                "shared_users": "Unknown",  # Not available via API
                 "permission_level": "Unknown",  # Not available via API
-                "message": "Notion API has limited permission querying - check workspace settings manually"
+                "message": "Notion API has limited permission querying - check workspace settings manually",
             }
 
             logger.info(f"Retrieved basic permission info for page: {page_id}")
@@ -301,17 +291,17 @@ class CollaborationManager:
     async def get_collaboration_stats(self, page_id: str | None = None) -> dict[str, Any]:
         """
         Get collaboration statistics with Austrian efficiency.
-        
+
         Args:
             page_id: Optional page ID for page-specific stats
-        
+
         Returns:
             Collaboration statistics and activity summary
         """
         try:
             stats = {
                 "timestamp": self.client.format_austrian_date(self.client.get_vienna_time()),
-                "timezone": str(self.client.timezone)
+                "timezone": str(self.client.timezone),
             }
 
             if page_id:
@@ -320,15 +310,17 @@ class CollaborationManager:
                     page = await self.client.get_page(page_id)
                     comments = await self.get_comments(page_id, include_resolved=True)
 
-                    stats.update({
-                        "page_id": page_id,
-                        "page_title": "Unknown",  # Would need to parse title property
-                        "total_comments": len(comments),
-                        "active_comments": len([c for c in comments if not c.get("resolved", False)]),
-                        "last_activity": page.get("last_edited_time"),
-                        "created_by": page.get("created_by", {}),
-                        "last_edited_by": page.get("last_edited_by", {})
-                    })
+                    stats.update(
+                        {
+                            "page_id": page_id,
+                            "page_title": "Unknown",  # Would need to parse title property
+                            "total_comments": len(comments),
+                            "active_comments": len([c for c in comments if not c.get("resolved", False)]),
+                            "last_activity": page.get("last_edited_time"),
+                            "created_by": page.get("created_by", {}),
+                            "last_edited_by": page.get("last_edited_by", {}),
+                        }
+                    )
                 except Exception as page_error:
                     stats["page_error"] = str(page_error)
             else:
@@ -337,13 +329,15 @@ class CollaborationManager:
                     users = await self.get_workspace_users(include_inactive=True)
                     active_users = [u for u in users if u.get("type") == "person"]
 
-                    stats.update({
-                        "scope": "workspace",
-                        "total_users": len(users),
-                        "active_users": len(active_users),
-                        "bot_users": len([u for u in users if u.get("type") == "bot"]),
-                        "api_usage": await self.client.get_stats()
-                    })
+                    stats.update(
+                        {
+                            "scope": "workspace",
+                            "total_users": len(users),
+                            "active_users": len(active_users),
+                            "bot_users": len([u for u in users if u.get("type") == "bot"]),
+                            "api_usage": await self.client.get_stats(),
+                        }
+                    )
                 except Exception as workspace_error:
                     stats["workspace_error"] = str(workspace_error)
 
@@ -355,21 +349,17 @@ class CollaborationManager:
             raise Exception(f"Stats retrieval failed: {e!s}")
 
     async def mention_user_in_comment(
-        self,
-        page_id: str,
-        content: str,
-        mentioned_user_id: str,
-        user_name: str | None = None
+        self, page_id: str, content: str, mentioned_user_id: str, user_name: str | None = None
     ) -> dict[str, Any]:
         """
         Create comment with user mention - Austrian efficiency implementation.
-        
+
         Args:
             page_id: Page to comment on
             content: Comment content
             mentioned_user_id: User ID to mention
             user_name: Optional user display name
-        
+
         Returns:
             Comment with mention information
         """
@@ -381,29 +371,14 @@ class CollaborationManager:
 
             # Build rich text with mention
             rich_text = [
-                {
-                    "type": "mention",
-                    "mention": {"user": {"id": mentioned_user_id}},
-                    "plain_text": f"@{user_name}"
-                },
-                {
-                    "type": "text",
-                    "text": {"content": f" {content}"},
-                    "plain_text": f" {content}"
-                }
+                {"type": "mention", "mention": {"user": {"id": mentioned_user_id}}, "plain_text": f"@{user_name}"},
+                {"type": "text", "text": {"content": f" {content}"}, "plain_text": f" {content}"},
             ]
 
             # Create comment with mention
-            comment = await self.add_comment(
-                page_id=page_id,
-                content=f"@{user_name} {content}",
-                rich_text=rich_text
-            )
+            comment = await self.add_comment(page_id=page_id, content=f"@{user_name} {content}", rich_text=rich_text)
 
-            comment["mentioned_user"] = {
-                "id": mentioned_user_id,
-                "name": user_name
-            }
+            comment["mentioned_user"] = {"id": mentioned_user_id, "name": user_name}
 
             logger.info(f"Comment with mention created: {page_id} -> @{user_name}")
             return comment
