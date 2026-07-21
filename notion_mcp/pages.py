@@ -210,7 +210,7 @@ class PageManager:
                             db_properties = self._build_page_properties(properties)
                             page_data["properties"].update(db_properties)
                     except Exception:
-                        raise Exception(f"Parent ID {parent_id} is not a valid page or data source")
+                        raise Exception(f"Parent ID {parent_id} is not a valid page or data source") from None
             else:
                 # Create in workspace root
                 page_data["parent"] = {"type": "workspace", "workspace": True}

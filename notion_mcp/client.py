@@ -32,7 +32,7 @@ class NotionClient:
         version: str = "2026-03-11",
         timeout: int = 30,
         timezone_str: str = "Europe/Vienna",
-        token_type: str = "internal",
+        token_type: str = "internal",  # noqa: S107
     ):
         """
         Initialize Notion client with Austrian context.
@@ -44,9 +44,7 @@ class NotionClient:
         token_type: "internal" or "pat" (Personal Access Token)
         """
         if not token:
-            raise ValueError(
-                "Notion token is required. Set NOTION_TOKEN (internal integration) or NOTION_PAT (personal access token)."
-            )
+            raise ValueError("Notion token required. Set NOTION_TOKEN (internal integration) or NOTION_PAT.")
 
         self.client = AsyncClient(auth=token, notion_version=version, timeout_ms=timeout * 1000)
 
@@ -82,23 +80,22 @@ class NotionClient:
             self.error_count += 1
             logger.error(f"Notion API error: {e.code} - {getattr(e, 'body', str(e))}")
 
-            # Austrian efficiency: Direct error communication
             msg = getattr(e, "body", str(e))
             if e.code == APIErrorCode.Unauthorized:
-                raise Exception("Notion API token is invalid or expired. Check your integration settings.")
+                raise Exception("Notion API token is invalid or expired. Check your integration settings.") from e
             elif e.code == APIErrorCode.RateLimited:
-                raise Exception("Rate limit exceeded. Please wait before making more requests.")
+                raise Exception("Rate limit exceeded. Please wait before making more requests.") from e
             elif e.code == APIErrorCode.ObjectNotFound:
-                raise Exception("The requested page/database was not found. Check the ID and permissions.")
+                raise Exception("The requested page/database was not found. Check the ID and permissions.") from e
             elif e.code == APIErrorCode.ValidationError:
-                raise Exception(f"Invalid request data: {msg}")
+                raise Exception(f"Invalid request data: {msg}") from e
             else:
-                raise Exception(f"Notion API error ({e.code}): {msg}")
+                raise Exception(f"Notion API error ({e.code}): {msg}") from e
 
         except Exception as e:
             self.error_count += 1
             logger.error(f"Unexpected error in {method}: {e}")
-            raise Exception(f"Request failed: {e!s}")
+            raise Exception(f"Request failed: {e!s}") from e
 
     def get_vienna_time(self) -> datetime:
         """Get current time in Vienna timezone for Austrian efficiency."""

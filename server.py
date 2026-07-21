@@ -93,10 +93,13 @@ async def server_lifespan(app: FastMCP):
 
 
 # Initialize FastMCP 3.1 Server with Austrian Efficiency
+_MCP_INSTRUCTIONS = "You are NotionMCP, a comprehensive MCP server for Notion workspace management."
+
 mcp = FastMCP(
     "notion-mcp",
     version="1.1.0",
-    instructions="""You are NotionMCP, a comprehensive MCP server for Notion workspace management with Austrian efficiency.
+    instructions=_MCP_INSTRUCTIONS
+    + """
 
 CORE CAPABILITIES:
 - Page Management: Create, update, search, archive pages with German/Japanese character support
@@ -120,8 +123,8 @@ RESPONSE FORMAT:
 
 AUSTRIAN CONTEXT:
 - Timezone: Europe/Vienna (all dates in DD.MM.YYYY format)
-- Language: German characters (ä, ö, ü, ß) fully supported
-- Budget: Optimized for ~€100/month AI tools budget
+- Language: German characters (a, o, u, ss) fully supported
+- Budget: Optimized for ~100/month AI tools budget
 - Academic focus: Research and knowledge management workflows
 
 ERROR HANDLING:
@@ -221,7 +224,17 @@ async def get_status():
 @app.get("/api/skills")
 async def get_skills():
     """List available skills."""
-    return {"skills": []}
+    import pathlib
+
+    skills_dir = pathlib.Path(__file__).parent / "notion_mcp" / "skills"
+    skills = []
+    if skills_dir.is_dir():
+        for sdir in skills_dir.iterdir():
+            if sdir.is_dir():
+                skill_file = sdir / "SKILL.md"
+                if skill_file.exists():
+                    skills.append({"name": sdir.name, "path": str(skill_file)})
+    return {"skills": skills}
 
 
 @app.get("/api/plugins")
@@ -381,9 +394,7 @@ def initialize_notion_client():
     token_type = "pat" if os.getenv("NOTION_PAT") and not os.getenv("NOTION_TOKEN") else "internal"
 
     if not token:
-        raise ValueError(
-            "Notion token required. Set NOTION_TOKEN (internal integration from https://www.notion.so/my-integrations) or NOTION_PAT (personal access token)."
-        )
+        raise ValueError("Notion token required. Set NOTION_TOKEN or NOTION_PAT.")
 
     try:
         notion_client = NotionClient(
@@ -408,10 +419,14 @@ def initialize_notion_client():
         raise
 
 
+_READ_ONLY = {"readonly": True}
+_MUTATING = {}
+_DESTRUCTIVE = {}
+
 # 🎛️ SOTA Portmanteau Toolsets (Consolidated Implementation)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_DESTRUCTIVE)
 async def manage_notion_data(
     operation: str = Field(description="CRUD operation: create, retrieve, update, archive, restore"),
     entity_type: str = Field(description="Entity type: page, data_source, block"),
@@ -509,7 +524,7 @@ async def manage_notion_data(
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def query_data_source(
     data_source_id: str = Field(description="Data source ID to query"),
     filter: dict[str, Any] | None = Field(default=None, description="Query filter"),
@@ -538,7 +553,7 @@ async def query_data_source(
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def search_notion_knowledge(
     query: str = Field(description="Search query (natural language)"),
     mode: str = Field(
@@ -570,7 +585,7 @@ async def search_notion_knowledge(
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def sync_rag_index(
     data_source_ids: list[str] | None = Field(
         default=None,
@@ -595,7 +610,7 @@ async def sync_rag_index(
 # Note: Keeping these for backward compatibility but marking as secondary
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def create_page(
     title: str = Field(description="Page title (supports German characters: ä, ö, ü, ß)"),
     content: str = Field(default="", description="Page content in Notion blocks format or plain text"),
@@ -633,7 +648,7 @@ async def create_page(
         }
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def update_page(
     page_id: str = Field(description="Page ID to update"),
     title: str | None = Field(default=None, description="New page title"),
@@ -666,7 +681,7 @@ async def update_page(
         }
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def get_page_content(
     page_id: str = Field(description="Page ID to retrieve"),
     include_children: bool = Field(default=True, description="Include child blocks"),
@@ -692,7 +707,7 @@ async def get_page_content(
         }
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def search_pages(
     query: str = Field(description="Search query (natural language)"),
     filter_by_type: str | None = Field(default=None, description="Filter by object type: page, database"),
@@ -724,7 +739,7 @@ async def search_pages(
         }
 
 
-@mcp.tool()
+@mcp.tool(annotations=_DESTRUCTIVE)
 async def archive_page(
     page_id: str = Field(description="Page ID to archive"),
     permanent_delete: bool = Field(default=False, description="Permanently delete instead of archive"),
@@ -763,7 +778,7 @@ async def archive_page(
 # 🗄️ Database Operations (6 tools)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def create_database(
     title: str = Field(description="Database title"),
     parent_id: str = Field(description="Parent page ID where database will be created"),
@@ -798,7 +813,7 @@ async def create_database(
         }
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def query_database(
     database_id: str = Field(description="Database ID to query"),
     filter: dict[str, Any] | None = Field(default=None, description="Query filter conditions"),
@@ -838,7 +853,7 @@ async def query_database(
         }
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def create_database_entry(
     database_id: str = Field(description="Database ID to add entry to"),
     properties: dict[str, Any] = Field(description="Entry properties"),
@@ -870,7 +885,7 @@ async def create_database_entry(
         }
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def update_database_entry(
     page_id: str = Field(description="Entry page ID to update"),
     properties: dict[str, Any] | None = Field(default=None, description="Updated properties"),
@@ -898,7 +913,7 @@ async def update_database_entry(
         }
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def get_database_schema(
     database_id: str = Field(description="Database ID to analyze"),
     include_statistics: bool = Field(default=False, description="Include usage statistics"),
@@ -926,7 +941,7 @@ async def get_database_schema(
         }
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def bulk_import_data(
     database_id: str = Field(description="Target database ID"),
     data_source: str = Field(description="CSV or JSON data to import"),
@@ -950,7 +965,7 @@ async def bulk_import_data(
         return {
             "success": True,
             "import_results": result,
-            "message": f"Imported {result['successful_imports']}/{result['total_records']} records with Austrian efficiency! 📊",
+            "message": f"Imported {result['successful_imports']}/{result['total_records']} records.",
         }
     except Exception as e:
         logger.error("Bulk import failed", database_id=database_id, error=str(e))
@@ -964,7 +979,7 @@ async def bulk_import_data(
 # 💬 Collaboration Tools (3 tools)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def add_comment(
     page_id: str = Field(description="Page or block ID to comment on"),
     content: str = Field(description="Comment content"),
@@ -994,7 +1009,7 @@ async def add_comment(
         }
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def get_comments(
     page_id: str = Field(description="Page ID to get comments from"),
     include_resolved: bool = Field(default=False, description="Include resolved comments"),
@@ -1025,7 +1040,7 @@ async def get_comments(
         }
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def get_workspace_users(
     include_inactive: bool = Field(default=False, description="Include inactive users"),
     permission_level: str | None = Field(default=None, description="Filter by permission level"),
@@ -1057,7 +1072,7 @@ async def get_workspace_users(
 # 🔍 Advanced Features (7 tools)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def setup_automation(
     trigger_type: str = Field(description="Automation trigger type"),
     conditions: dict[str, Any] = Field(description="Trigger conditions"),
@@ -1074,7 +1089,7 @@ async def setup_automation(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def sync_external_data(
     external_source: str = Field(description="External data source type"),
     sync_config: dict[str, Any] = Field(description="Sync configuration"),
@@ -1089,7 +1104,7 @@ async def sync_external_data(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def generate_ai_summary(
     page_id: str = Field(description="Page ID to analyze"),
     summary_type: str = Field(default="comprehensive", description="Summary type"),
@@ -1106,7 +1121,7 @@ async def generate_ai_summary(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def export_workspace_data(
     scope: str = Field(default="workspace", description="Export scope"),
     format: str = Field(default="json", description="Export format"),
@@ -1120,7 +1135,7 @@ async def export_workspace_data(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def import_workspace_data(
     source_path: str = Field(description="Local path to Markdown/JSON file"),
     target_parent_id: str = Field(description="Parent Page/Database ID in Notion"),
@@ -1135,7 +1150,7 @@ async def import_workspace_data(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def orchestrate_automation(
     operation: str = Field(description="Automation operation: setup, sync_external, report, export"),
     config: dict[str, Any] = Field(description="Automation configuration"),
@@ -1157,7 +1172,7 @@ async def orchestrate_automation(
 # 🌐 Webhook Management (2 tools)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def verify_webhook(
     verification_token: str = Field(description="Verification token from Notion's webhook POST"),
 ) -> dict[str, Any]:
@@ -1166,7 +1181,7 @@ async def verify_webhook(
     return await automation_manager.verify_webhook_subscription(verification_token)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def list_webhook_events(
     limit: int = Field(default=50, description="Max events to return"),
     event_type: str | None = Field(default=None, description="Filter by event type"),
@@ -1180,7 +1195,7 @@ async def list_webhook_events(
 # 🔧 Notion Workers Management (6 tools)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def deploy_worker(
     project_dir: str | None = Field(default=None, description="Worker project directory (default: current dir)"),
 ) -> dict[str, Any]:
@@ -1188,13 +1203,13 @@ async def deploy_worker(
     return await notion_workers.deploy_worker(project_dir)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def list_workers() -> dict[str, Any]:
     """List deployed Notion Workers. Requires ntn CLI."""
     return await notion_workers.list_workers()
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def scaffold_worker(
     project_dir: str = Field(description="Directory to scaffold the worker project"),
 ) -> dict[str, Any]:
@@ -1202,7 +1217,7 @@ async def scaffold_worker(
     return await notion_workers.scaffold_worker(project_dir)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def worker_logs(
     worker_name: str | None = Field(default=None, description="Worker name filter"),
     tail: int = Field(default=50, description="Number of log lines"),
@@ -1211,13 +1226,13 @@ async def worker_logs(
     return await notion_workers.worker_logs(worker_name=worker_name, tail=tail)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def check_ntn() -> dict[str, Any]:
     """Check if Notion CLI (ntn) is installed."""
     return await notion_workers.check_ntn_version()
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def orchestrate_workers(
     operation: str = Field(description="Worker operation: deploy, list, scaffold, logs, check"),
     project_dir: str | None = Field(default=None, description="Project directory (for deploy/scaffold)"),

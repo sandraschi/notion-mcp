@@ -77,7 +77,7 @@ class CollaborationManager:
 
         except Exception as e:
             logger.error(f"Failed to add comment to {page_id}: {e}")
-            raise Exception(f"Comment creation failed: {e!s}")
+            raise Exception(f"Comment creation failed: {e!s}") from e
 
     async def get_comments(
         self, page_id: str, include_resolved: bool = False, sort_by: str = "created_time", limit: int = 50
@@ -136,7 +136,7 @@ class CollaborationManager:
 
         except Exception as e:
             logger.error(f"Failed to get comments from {page_id}: {e}")
-            raise Exception(f"Comment retrieval failed: {e!s}")
+            raise Exception(f"Comment retrieval failed: {e!s}") from e
 
     def _extract_comment_text(self, rich_text: list[dict[str, Any]]) -> str:
         """Extract plain text from rich_text array."""
@@ -221,7 +221,7 @@ class CollaborationManager:
 
         except Exception as e:
             logger.error(f"Failed to get workspace users: {e}")
-            raise Exception(f"User retrieval failed: {e!s}")
+            raise Exception(f"User retrieval failed: {e!s}") from e
 
     async def get_user_details(self, user_id: str) -> dict[str, Any]:
         """
@@ -254,7 +254,7 @@ class CollaborationManager:
 
         except Exception as e:
             logger.error(f"Failed to get user details {user_id}: {e}")
-            raise Exception(f"User details retrieval failed: {e!s}")
+            raise Exception(f"User details retrieval failed: {e!s}") from e
 
     async def get_page_permissions(self, page_id: str) -> dict[str, Any]:
         """
@@ -286,7 +286,7 @@ class CollaborationManager:
 
         except Exception as e:
             logger.error(f"Failed to get page permissions {page_id}: {e}")
-            raise Exception(f"Permission retrieval failed: {e!s}")
+            raise Exception(f"Permission retrieval failed: {e!s}") from e
 
     async def get_collaboration_stats(self, page_id: str | None = None) -> dict[str, Any]:
         """
@@ -346,7 +346,7 @@ class CollaborationManager:
 
         except Exception as e:
             logger.error(f"Failed to get collaboration stats: {e}")
-            raise Exception(f"Stats retrieval failed: {e!s}")
+            raise Exception(f"Stats retrieval failed: {e!s}") from e
 
     async def mention_user_in_comment(
         self, page_id: str, content: str, mentioned_user_id: str, user_name: str | None = None
@@ -385,4 +385,4 @@ class CollaborationManager:
 
         except Exception as e:
             logger.error(f"Failed to create comment with mention: {e}")
-            raise Exception(f"Mention comment failed: {e!s}")
+            raise Exception(f"Mention comment failed: {e!s}") from e

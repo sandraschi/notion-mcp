@@ -21,7 +21,7 @@ def _ntn_binary() -> str:
 def _run_ntn(args: list[str], timeout: int = 60) -> dict:
     """Run an ntn CLI command and return parsed result."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             [_ntn_binary(), *args],
             capture_output=True,
             text=True,
@@ -92,7 +92,7 @@ async def worker_logs(worker_name: str | None = None, tail: int = 50) -> dict[st
 async def check_ntn_version() -> dict[str, Any]:
     """Check if ntn CLI is installed and return its version."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             [_ntn_binary(), "--version"],
             capture_output=True,
             text=True,
