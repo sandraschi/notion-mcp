@@ -1,0 +1,143 @@
+# notion-mcp — Full Reference
+
+## Overview
+
+notion-mcp is a FastMCP 3.4 MCP server that provides comprehensive Notion workspace management. It exposes 32 MCP tools for page management, database operations, collaboration, RAG-powered semantic search, automations, webhook management, and Notion Workers orchestration.
+
+**Version**: 1.2.0
+**Ports**: Frontend 10810, Backend 10811
+**Python**: 3.12+
+**Framework**: FastMCP >=3.4.4, FastAPI, Uvicorn
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| NOTION_TOKEN | Yes* | — | Internal integration token |
+| NOTION_PAT | Yes* | — | Personal access token (takes priority) |
+| NOTION_VERSION | No | 2026-03-11 | Notion API version |
+| LLM_API_URL | No | — | OpenAI-compatible LLM endpoint |
+| LLM_API_KEY | No | ollama | LLM API key |
+| LLM_MODEL | No | llama3.2 | LLM model name |
+| NOTION_WEBHOOK_URL | No | — | Public webhook endpoint URL |
+| NTN_BIN | No | ntn | Notion CLI binary path |
+| MCP_PORT | No | 10811 | HTTP server port |
+| PORT | No | 10811 | HTTP server port (alias) |
+| TIMEZONE | No | Europe/Vienna | Timezone for date handling |
+| LOG_LEVEL | No | INFO | Logging level |
+
+*One of NOTION_TOKEN or NOTION_PAT is required.
+
+## Tools
+
+### Page Management (5 tools)
+- `create_page` — Create a Notion page with content and properties
+- `update_page` — Update existing page content/properties
+- `get_page_content` — Retrieve complete page with blocks
+- `search_pages` — Natural language search across workspace
+- `archive_page` — Safely archive or delete pages
+
+### Database Operations (6 tools)
+- `create_database` — Create databases with custom property schemas
+- `query_database` — Complex filtering and sorting queries
+- `create_database_entry` — Add entries with all property types
+- `update_database_entry` — Update existing entries
+- `get_database_schema` — Analyze database structure
+- `bulk_import_data` — Import CSV/JSON data efficiently
+
+### Collaboration (3 tools)
+- `add_comment` — Add comments to pages/blocks (native Comments API)
+- `get_comments` — Retrieve comment threads
+- `get_workspace_users` — List workspace users and permissions
+
+### RAG / Semantic Search (3 tools)
+- `sync_rag_index` — Sync Notion workspace to local LanceDB vector store
+- `search_notion_knowledge` — Semantic search across indexed pages
+- `clear_rag_index` — Wipe the local vector database
+
+### Advanced Features (7 tools)
+- `setup_automation` — Create workflow automations
+- `sync_external_data` — Sync from external sources
+- `generate_ai_summary` — AI-powered content analysis
+- `export_workspace_data` — Backup and export
+- `import_workspace_data` — Import Markdown/JSON into Notion
+- `orchestrate_automation` — Multi-operation automation orchestrator
+- `manage_notion_data` — Consolidated CRUD for pages, databases, blocks
+
+### Webhook Management (2 tools)
+- `verify_webhook` — Store verification token from Notion webhook POST
+- `list_webhook_events` — List received Notion webhook events
+
+### Notion Workers (6 tools)
+- `deploy_worker` — Deploy a Notion Worker via ntn CLI
+- `list_workers` — List deployed Workers
+- `scaffold_worker` — Scaffold new Worker project
+- `worker_logs` — Fetch Worker logs
+- `check_ntn` — Verify ntn CLI installation
+- `orchestrate_workers` — Multi-operation worker orchestration
+
+## REST Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /api/status | Server connection status and workspace info |
+| GET | /api/health | Health check (liveness probe) |
+| GET | /api/v1/diagnostics | Full diagnostics for CUA-NSIS smoke testing |
+| GET | /api/skills | List available skills |
+| GET | /api/plugins | List installed plugins |
+| POST | /api/plugins/install/{id} | Install/activate a plugin |
+| GET | /api/stats | Real-time Notion workspace telemetry |
+| GET | /api/tools | Dynamic listing of registered MCP tools |
+| GET | /api/llm-discovery | Auto-detect local LLMs (Ollama/LM Studio) |
+| POST | /api/search | Semantic search endpoint |
+| POST | /api/chat | RAG-powered chat |
+| POST | /api/webhooks/notion | Receive Notion webhook events |
+| GET | /api/webhooks/events | List stored webhook events |
+| POST | /api/import | Data migration import |
+| GET | /api/export | Data export |
+
+## MCP Transport
+
+- **stdio**: Run `uv run notion-mcp` or `uv run python server.py --stdio`
+- **HTTP**: Run `uv run python server.py --http --port 10811`
+- **MCP HTTP**: http://127.0.0.1:10811/mcp
+
+## Architecture
+
+```
+server.py → FastMCP (32 tools) + FastAPI (REST endpoints)
+  ├── notion_mcp/client.py — Notion API client (Comments API, markdown endpoints)
+  ├── notion_mcp/pages.py — Page operations
+  ├── notion_mcp/databases.py — Database operations
+  ├── notion_mcp/collaboration.py — Comments & users
+  ├── notion_mcp/automations.py — AI summary, webhooks, automation
+  ├── notion_mcp/workers.py — Notion Workers via ntn CLI
+  ├── notion_mcp/plugins.py — Plugin management
+  ├── notion_mcp/rag/ — LanceDB vector RAG pipeline
+  └── notion_mcp/transport.py — Dual STDIO/HTTP transport
+```
+
+## Native Desktop (Tauri)
+
+The repo ships a Tauri 2.0 native wrapper in `native/`. Build pipeline:
+```
+run_server.py → PyInstaller → notion-mcp-backend.exe → native/resources/
+  → npx tauri build → Notion MCP_0.1.0_x64-setup.exe
+```
+
+### Build
+```powershell
+just build-native    # Full pipeline
+just cua-nsis-test   # Install → launch → verify → uninstall
+```
+
+## Testing
+
+```bash
+uv run pytest tests/ -q     # 20 unit tests
+```
+
+## Data Storage
+
+- LanceDB: `data/notion_mcp/lancedb/` — vector index for RAG searches
+- Webhook events: `exports/webhook_events/` — persisted webhook payloads

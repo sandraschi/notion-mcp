@@ -1,4 +1,5 @@
-﻿set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
+import 'scripts/just/fleet.just'
 
 # Open the interactive recipe dashboard in the browser
 default:
@@ -55,3 +56,12 @@ dev:
 
 # Alias for dashboard launch
 web: dev
+
+# Build MCPB bundle for Claude Desktop distribution
+mcpb-pack:
+    Set-Location '{{justfile_directory()}}'
+    $ver = (Select-String -Path 'pyproject.toml' -Pattern 'version = "(.+)"').Matches[0].Groups[1].Value
+    $name = "notion-mcp"
+    New-Item -ItemType Directory -Force -Path "dist" | Out-Null
+    mcpb pack . "dist/${name}-v${ver}.mcpb"
+    Write-Host "MCPB bundle: dist/${name}-v${ver}.mcpb" -ForegroundColor Green

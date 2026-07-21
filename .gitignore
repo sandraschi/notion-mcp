@@ -106,3 +106,13 @@ Thumbs.db
 target/
 
 _dashboard/
+
+# MCPB packaging
+dist/*.mcpb
+
+# Batch mutation safety backups
+*.bak
+
+# Native/Tauri build artifacts
+native/target/
+native/gen/

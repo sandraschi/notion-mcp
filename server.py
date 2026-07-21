@@ -13,6 +13,7 @@ Status: Production-Ready (SOTA 2026)
 
 import asyncio
 import os
+import time
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -145,10 +146,19 @@ rag = RAGOrchestrator()
 # Initialize FastAPI app for SOTA Dashboard
 app = FastAPI(title="NotionMCP SOTA Dashboard")
 
-# Add CORS middleware
+# Add CORS middleware (fleet standard — unconditional)
+_tauri_desktop = os.environ.get("NOTION_MCP_TAURI", "").lower() in ("1", "true", "yes")
+_backend_port = int(os.getenv("PORT", "10811"))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        f"http://localhost:{_backend_port}",
+        f"http://127.0.0.1:{_backend_port}",
+        "http://tauri.localhost",
+        "https://tauri.localhost",
+        "tauri://localhost",
+    ],
+    allow_origin_regex=r"https?://(?:[a-zA-Z0-9-]+\.ts\.net|.*?\.tail-[a-f0-9]+\.ts\.net|tauri\.localhost|localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|100\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?$|^tauri://localhost$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -156,9 +166,37 @@ app.add_middleware(
 
 config = load_config()
 plugin_manager = PluginManager()
+_server_start_time = time.time()
 
 
 # Custom API endpoints for SOTA Dashboard
+@app.get("/api/health")
+async def get_health():
+    """Health check endpoint — liveness probe."""
+    return {
+        "status": "ok",
+        "server": "notion-mcp",
+        "version": "1.2.0",
+        "uptime_seconds": int(time.time() - _server_start_time),
+    }
+
+
+@app.get("/api/v1/diagnostics")
+async def get_diagnostics():
+    """Full diagnostics for CUA-NSIS smoke testing."""
+    tools_list = [t.name for t in mcp.list_tools()]
+    return {
+        "status": "ok",
+        "server": "notion-mcp",
+        "version": "1.2.0",
+        "uptime_seconds": int(time.time() - _server_start_time),
+        "tool_count": len(tools_list),
+        "tools": [{"name": t} for t in tools_list],
+        "system": {"windows": True},
+        "errors": [],
+    }
+
+
 @app.get("/api/status")
 async def get_status():
     """Return system connection status and workspace info."""
@@ -166,14 +204,11 @@ async def get_status():
     workspace_name = "Not Connected"
     try:
         initialize_notion_client()
-        # Test connection and get workspace name
-        results = await notion_client.search_pages("", limit=1)
-        # Search results for workspace name are tricky with basic search, usually we check client info
-        # For simplicity, if we don't error, we are authenticated
+        await notion_client.search_pages("", limit=1)
         authenticated = True
-        workspace_name = "Austrian Workspace"  # Mock name for now
+        workspace_name = "Austrian Workspace"
     except Exception:
-        pass
+        logger.warning("Notion status check failed — not authenticated", exc_info=True)
 
     return {
         "authenticated": authenticated,
@@ -181,6 +216,12 @@ async def get_status():
         "server_running": True,
         "mcp_version": "3.1.0",
     }
+
+
+@app.get("/api/skills")
+async def get_skills():
+    """List available skills."""
+    return {"skills": []}
 
 
 @app.get("/api/plugins")

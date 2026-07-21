@@ -1,0 +1,9 @@
+# notion-mcp
+
+> FastMCP 3.4 MCP server for comprehensive Notion workspace management and RAG-powered semantic discovery.
+
+## Key Links
+- [Full documentation](llms-full.txt)
+- [README](README.md)
+- [Installation guide](INSTALL.md)
+- [API reference](docs/API.md)
