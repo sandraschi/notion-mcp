@@ -235,7 +235,7 @@ async def get_status():
         if notion_client is None:
             raise RuntimeError("notion_client is None after initialization")
         authenticated = True
-        workspace_name = "Austrian Workspace"
+        workspace_name = "Notion Workspace"
     except Exception as exc:
         logger.warning("Notion not authenticated", error=str(exc), exc_info=True)
 

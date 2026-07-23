@@ -42,7 +42,7 @@ export function DataMigration() {
             id: data.export_config.id,
             timestamp: data.export_config.started_time,
             format: format.toUpperCase(),
-            size: "24 KB",
+            size: data.export_config.size || "unknown",
             status: "ready",
           },
           ...exports,
