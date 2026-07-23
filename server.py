@@ -247,6 +247,19 @@ async def get_status():
     }
 
 
+@app.get("/api/docs/{name}")
+async def get_doc(name: str):
+    """Return a docs/*.md file as plain text."""
+    import pathlib
+
+    docs_dir = pathlib.Path(__file__).parent / "docs"
+    safe_name = pathlib.Path(name).name
+    doc_path = docs_dir / f"{safe_name}.md"
+    if doc_path.exists() and doc_path.is_file():
+        return {"name": safe_name, "content": doc_path.read_text(encoding="utf-8")}
+    return {"error": "not found"}
+
+
 @app.get("/api/skills")
 async def get_skills():
     """List available skills."""
