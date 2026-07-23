@@ -24,6 +24,7 @@ A practical comparison of popular note-taking and knowledge management applicati
 - **Speed**: Can feel sluggish with large pages or databases with thousands of entries. The web app is heavier than local-first tools.
 - **Vendor lock-in**: Your data lives on Notion's servers. There is no local file format. Migrating out is painful.
 - **Not a PKM tool out of the box**: There is no native backlinking, graph view, or Zettelkasten workflow — these must be built manually.
+- **No plugin ecosystem**: Unlike Obsidian, Notion has no client-side plugin system. You cannot install community plugins inside the app to change the editor, add views, or customize the UI. All extensibility goes through the REST API.
 - **Mobile app**: Functional but not great for quick capture. Search and navigation are slow.
 
 ---
