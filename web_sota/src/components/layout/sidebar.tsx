@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Puzzle,
   Search,
+  Server,
   Settings,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
@@ -30,7 +31,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { name: "Plugin Registry", icon: Puzzle, path: "/plugins" },
     { name: "Data & Migration", icon: Database, path: "/data" },
     { name: "Logging", icon: Activity, path: "/logging" },
-    { name: "Status", icon: Settings, path: "/status" },
+    { name: "Status", icon: Server, path: "/status" },
+    { name: "Settings", icon: Settings, path: "/settings" },
     { name: "Help", icon: HelpCircle, path: "/help" },
   ];
 
