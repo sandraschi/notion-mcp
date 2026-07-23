@@ -12,6 +12,8 @@ Status: Production-Ready (SOTA 2026)
 """
 
 import asyncio
+import collections
+import datetime
 import os
 import time
 from contextlib import asynccontextmanager
@@ -38,7 +40,28 @@ from notion_mcp.transport import (
     run_server_async,
 )
 
-# Configure structured logging (JSON to stderr only)
+_LOG_BUFFER_MAX = 5000
+_log_buffer: collections.deque[dict] = collections.deque(maxlen=_LOG_BUFFER_MAX)
+_log_counter = 0
+
+
+def _log_processor(logger_, method_name, event_dict):
+    global _log_counter
+    _log_counter += 1
+    _log_buffer.append(
+        {
+            "id": str(_log_counter),
+            "timestamp": datetime.datetime.now().isoformat(),
+            "level": method_name.upper(),
+            "kind": "",
+            "detail": str(event_dict.get("event", event_dict.get("message", ""))),
+            "meta": {k: v for k, v in event_dict.items() if k not in ("event", "message")},
+        }
+    )
+    return event_dict
+
+
+# Configure structured logging with in-memory ring buffer capture
 structlog.configure(
     processors=[
         structlog.stdlib.filter_by_level,
@@ -49,6 +72,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
+        _log_processor,
         structlog.processors.JSONRenderer(),
     ],
     context_class=dict,
@@ -210,10 +234,6 @@ async def get_status():
         initialize_notion_client()
         if notion_client is None:
             raise RuntimeError("notion_client is None after initialization")
-        try:
-            await notion_client.search_pages("a", limit=1)
-        except Exception as search_err:
-            logger.warning("Notion search failed but client is initialized", error=str(search_err))
         authenticated = True
         workspace_name = "Austrian Workspace"
     except Exception as exc:
@@ -266,6 +286,62 @@ async def set_notion_token(token: str = Body(..., embed=True)):
         }
 
 
+@app.get("/api/logs")
+async def get_logs(
+    limit: int = 50, offset: int = 0, level: str = "", kind: str = "", search: str = "", sort: str = "desc"
+):
+    """Query the in-memory log ring buffer."""
+    entries = list(_log_buffer)
+    if level:
+        entries = [e for e in entries if e["level"] == level.upper()]
+    if kind:
+        entries = [e for e in entries if e["kind"] == kind]
+    if search:
+        entries = [e for e in entries if search.lower() in e["detail"].lower()]
+    if sort == "desc":
+        entries = list(reversed(entries))
+    total = len(entries)
+    entries = entries[offset : offset + limit]
+    return {"entries": entries, "total": total, "offset": offset, "limit": limit}
+
+
+@app.delete("/api/logs")
+async def clear_logs():
+    """Clear the in-memory log ring buffer."""
+    _log_buffer.clear()
+    return {"success": True}
+
+
+@app.get("/api/logs/export")
+async def export_logs(format: str = "json", level: str = "", kind: str = "", search: str = ""):
+    """Export logs as JSON or CSV."""
+    entries = list(_log_buffer)
+    if level:
+        entries = [e for e in entries if e["level"] == level.upper()]
+    if kind:
+        entries = [e for e in entries if e["kind"] == kind]
+    if search:
+        entries = [e for e in entries if search.lower() in e["detail"].lower()]
+    if format == "csv":
+        import io
+
+        buf = io.StringIO()
+        buf.write("id,timestamp,level,kind,detail\n")
+        for e in entries:
+            d = e["detail"].replace('"', '""')
+            buf.write(f'{e["id"]},{e["timestamp"]},{e["level"]},{e["kind"]},"{d}"\n')
+        from fastapi.responses import Response as FastResponse
+
+        return FastResponse(
+            content=buf.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=logs.csv"},
+        )
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(content={"entries": entries, "total": len(entries)})
+
+
 @app.get("/api/plugins")
 async def get_plugins():
     """List installed and recommended plugins."""
@@ -316,7 +392,36 @@ async def get_stats():
 @app.get("/api/tools")
 async def list_tools():
     """Dynamic listing of registered MCP tools."""
-    return {"tools": [t.name for t in mcp.list_tools()]}
+    try:
+        tools = await mcp.list_tools()
+        return {"tools": [t.name for t in tools]}
+    except Exception as e:
+        logger.exception("Failed to list tools")
+        return {"tools": [], "error": str(e)}
+
+
+@app.get("/api/llm/providers")
+async def llm_providers():
+    """Return available LLM providers and their models (for Settings page)."""
+    import httpx
+
+    providers: dict[str, list[dict]] = {"ollama": [], "lm_studio": []}
+    async with httpx.AsyncClient(timeout=2) as client:
+        try:
+            resp = await client.get("http://localhost:11434/api/tags")
+            if resp.status_code == 200:
+                for m in resp.json().get("models", []):
+                    providers["ollama"].append({"name": m["name"]})
+        except Exception:  # noqa: S110
+            pass
+        try:
+            resp = await client.get("http://localhost:1234/v1/models")
+            if resp.status_code == 200:
+                for m in resp.json().get("data", []):
+                    providers["lm_studio"].append({"name": m["id"]})
+        except Exception:  # noqa: S110
+            pass
+    return providers
 
 
 @app.get("/api/llm-discovery")
