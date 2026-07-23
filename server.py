@@ -15,6 +15,7 @@ import asyncio
 import os
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 import structlog
@@ -237,6 +238,29 @@ async def get_skills():
     return {"skills": skills}
 
 
+@app.post("/api/configure/token")
+async def set_notion_token(token: str = Body(..., embed=True)):
+    """Store Notion token via webapp (no .env editing needed)."""
+    global notion_client, page_manager, db_manager, collab_manager, automation_manager
+    notion_client = None
+    page_manager = None
+    db_manager = None
+    collab_manager = None
+    automation_manager = None
+    _write_stored_token(token)
+    try:
+        initialize_notion_client()
+        return {"success": True, "authenticated": True, "message": "Token saved and connected."}
+    except Exception as e:
+        logger.exception("Token save succeeded but connection failed")
+        return {
+            "success": False,
+            "authenticated": False,
+            "error": str(e),
+            "message": "Token saved but Notion rejected it.",
+        }
+
+
 @app.get("/api/plugins")
 async def get_plugins():
     """List installed and recommended plugins."""
@@ -357,6 +381,26 @@ async def get_webhook_events(limit: int = 50, event_type: str | None = None):
     return await automation_manager.list_webhook_events(limit=limit, event_type=event_type)
 
 
+_DATA_DIR = Path(__file__).resolve().parent / "exports"
+_TOKEN_FILE = _DATA_DIR / "notion_token.txt"
+
+
+def _read_stored_token() -> str | None:
+    """Read token from local file (set via webapp Settings)."""
+    try:
+        if _TOKEN_FILE.exists():
+            return _TOKEN_FILE.read_text(encoding="utf-8").strip()
+    except Exception:
+        logger.warning("Failed to read stored token file", exc_info=True)
+    return None
+
+
+def _write_stored_token(token: str) -> None:
+    """Persist token to local file."""
+    _DATA_DIR.mkdir(parents=True, exist_ok=True)
+    _TOKEN_FILE.write_text(token, encoding="utf-8")
+
+
 # Initialize Notion client with Austrian efficiency
 # Note: Initialization happens lazily to avoid import-time failures
 notion_client = None
@@ -373,9 +417,10 @@ def initialize_notion_client():
     if notion_client is not None:
         return  # Already initialized
 
-    # Check for NOTION_TOKEN (internal) or NOTION_PAT (personal access token)
-    token = os.getenv("NOTION_TOKEN") or os.getenv("NOTION_PAT")
-    token_type = "pat" if os.getenv("NOTION_PAT") and not os.getenv("NOTION_TOKEN") else "internal"
+    # Check env vars first, then file-based token (set via webapp Settings)
+    token = os.getenv("NOTION_TOKEN") or os.getenv("NOTION_PAT") or _read_stored_token()
+    has_file_token = bool(_read_stored_token())
+    token_type = "pat" if (os.getenv("NOTION_PAT") or has_file_token) and not os.getenv("NOTION_TOKEN") else "internal"
 
     if not token:
         raise ValueError("Notion token required. Set NOTION_TOKEN or NOTION_PAT.")
