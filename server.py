@@ -378,6 +378,41 @@ async def export_data(format: str = "json"):
         return {"success": False, "error": str(e)}
 
 
+@app.get("/api/page/{page_id}")
+async def get_page(page_id: str):
+    """Return page metadata and content blocks."""
+    try:
+        initialize_notion_client()
+        content = await page_manager.get_page_content(page_id, include_children=True, block_depth=5)
+        page_data = content.get("page", {})
+        title = "Untitled"
+        props = page_data.get("properties", {})
+        if "title" in props:
+            title_parts = props["title"].get("title", [])
+            if title_parts:
+                title = title_parts[0].get("plain_text", "") or "Untitled"
+        blocks_text = []
+        for b in content.get("blocks", []):
+            b_type = b.get("type", "")
+            b_content = b.get(b_type, {})
+            text = ""
+            if "rich_text" in b_content:
+                text = "".join(t.get("plain_text", "") for t in b_content["rich_text"])
+            elif "text" in b_content:
+                text = b_content["text"].get("content", "")
+            if text:
+                blocks_text.append({"type": b_type, "text": text})
+        return {
+            "id": page_id,
+            "title": title,
+            "url": page_data.get("url", ""),
+            "last_edited": page_data.get("last_edited_time", ""),
+            "blocks": blocks_text,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/recent")
 async def get_recent(limit: int = 20):
     """Return recent pages and databases from the Notion workspace."""
