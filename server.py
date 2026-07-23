@@ -208,11 +208,16 @@ async def get_status():
     workspace_name = "Not Connected"
     try:
         initialize_notion_client()
-        await notion_client.search_pages("", limit=1)
+        if notion_client is None:
+            raise RuntimeError("notion_client is None after initialization")
+        try:
+            await notion_client.search_pages("a", limit=1)
+        except Exception as search_err:
+            logger.warning("Notion search failed but client is initialized", error=str(search_err))
         authenticated = True
         workspace_name = "Austrian Workspace"
-    except Exception:
-        logger.warning("Notion status check failed — not authenticated", exc_info=True)
+    except Exception as exc:
+        logger.warning("Notion not authenticated", error=str(exc), exc_info=True)
 
     return {
         "authenticated": authenticated,
