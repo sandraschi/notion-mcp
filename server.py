@@ -378,6 +378,37 @@ async def export_data(format: str = "json"):
         return {"success": False, "error": str(e)}
 
 
+@app.get("/api/recent")
+async def get_recent(limit: int = 20):
+    """Return recent pages and databases from the Notion workspace."""
+    try:
+        initialize_notion_client()
+        results = await page_manager.search_pages(query="", sort_by="last_edited_time", limit=limit)
+        items = []
+        for r in results:
+            obj_type = r.get("object", "page")
+            title = "Untitled"
+            props = r.get("properties", {})
+            if "title" in props:
+                title_parts = props["title"].get("title", [])
+                if title_parts:
+                    title = title_parts[0].get("plain_text", "") or "Untitled"
+            elif "Name" in props:
+                title_parts = props["Name"].get("title", [])
+                if title_parts:
+                    title = title_parts[0].get("plain_text", "") or "Untitled"
+            items.append({
+                "id": r.get("id", ""),
+                "title": title,
+                "type": obj_type,
+                "url": r.get("url", ""),
+                "last_edited": r.get("last_edited_time", ""),
+            })
+        return {"items": items}
+    except Exception as e:
+        return {"items": [], "error": str(e)}
+
+
 @app.get("/api/stats")
 async def get_stats():
     """Return real-time Notion workspace telemetry."""

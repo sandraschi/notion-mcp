@@ -1,59 +1,41 @@
 import { AuthSetup } from "@/components/auth/auth-setup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Cpu,
-  Database,
-  FileText,
-  RefreshCcw,
-  Users,
-} from "lucide-react";
+import { ExternalLink, FileText, Globe } from "lucide-react";
 import { API_BASE } from "@/lib/api";
 import { useCallback, useEffect, useState } from "react";
 
-interface Status {
-  authenticated: boolean;
-  workspace: string;
-  server_running: boolean;
-}
-
-interface BackendStats {
-  total_requests: number;
-  total_errors: number;
-  success_rate: number;
-}
-
-interface Llm {
-  name: string;
-  provider: string;
+interface RecentItem {
+  id: string;
+  title: string;
+  type: string;
   url: string;
+  last_edited: string;
 }
 
 export function Dashboard() {
-  const [status, setStatus] = useState<Status | null>(null);
-  const [stats, setStats] = useState<BackendStats | null>(null);
-  const [llms, setLlms] = useState<Llm[]>([]);
+  const [items, setItems] = useState<RecentItem[]>([]);
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dbCount, setDbCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statusRes, llmsRes] = await Promise.all([
-        fetch(API_BASE + "/api/status"),
-        fetch(API_BASE + "/api/llm-discovery"),
-      ]);
+      const statusRes = await fetch(API_BASE + "/api/status");
       const statusData = await statusRes.json();
-      const llmsData = await llmsRes.json();
-      setStatus(statusData);
-      setLlms(llmsData.llms || []);
-      if (statusData.authenticated) {
-        const statsRes = await fetch(API_BASE + "/api/stats");
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          setStats(statsData);
+      const authed = statusData.authenticated;
+      setAuthenticated(authed);
+
+      if (authed) {
+        const recentRes = await fetch(API_BASE + "/api/recent?limit=30");
+        if (recentRes.ok) {
+          const recentData = await recentRes.json();
+          setItems(recentData.items || []);
+          setDbCount(recentData.items.filter((i: any) => i.type === "database").length);
         }
       }
-    } catch (error) {
-      console.warn("Dashboard fetch failed", error);
+    } catch {
+      console.warn("Dashboard fetch failed");
     } finally {
       setLoading(false);
     }
@@ -61,19 +43,20 @@ export function Dashboard() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  if (loading)
+  if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
       </div>
     );
+  }
 
-  if (status && !status.authenticated) {
+  if (authenticated === false) {
     return <AuthSetup />;
   }
 
-  const notionDot = status?.authenticated ? "bg-emerald-500" : "bg-red-500";
-  const notionLabel = status?.authenticated ? "Connected" : "No token set";
+  const pages = items.filter((i) => i.type === "page");
+  const databases = items.filter((i) => i.type === "database");
 
   return (
     <div className="space-y-6" data-testid="dashboard">
@@ -83,146 +66,44 @@ export function Dashboard() {
             Notion Dashboard
           </h2>
           <p className="text-slate-400">
-            {status?.workspace || "Workspace"} — overview and connectivity
+            {items.length > 0 ? `${pages.length} pages, ${databases.length} databases` : "Recent workspace content"}
           </p>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-slate-800 bg-slate-950/50" data-testid="kpi-pages">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-200">
-              API Requests
-            </CardTitle>
-            <FileText className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {stats?.total_requests ?? "?"}
-            </div>
-            <p className="text-xs text-slate-400">Total this session</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-800 bg-slate-950/50" data-testid="kpi-databases">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-200">
-              API Errors
-            </CardTitle>
-            <Database className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {stats?.total_errors ?? "?"}
-            </div>
-            <p className="text-xs text-slate-400">Errors this session</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-800 bg-slate-950/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-200">
-              Success Rate
-            </CardTitle>
-            <Users className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {stats?.success_rate != null ? `${(stats.success_rate * 100).toFixed(0)}%` : "?"}
-            </div>
-            <p className="text-xs text-slate-400">Notion API calls</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-800 bg-slate-950/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-200">
-              LLM Status
-            </CardTitle>
-            <RefreshCcw className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {llms.length > 0 ? `${llms.length} found` : "None"}
-            </div>
-            <p className="text-xs text-slate-400">
-              {llms.length > 0 ? "Ollama / LM Studio" : "No local LLM detected"}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 border-slate-800 bg-slate-950/50">
-          <CardHeader>
-            <CardTitle className="text-white">
-              Local LLMs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {llms.length === 0 ? (
-                <p className="text-sm text-slate-500">
-                  No local LLMs detected. Start Ollama or LM Studio to enable AI features.
-                </p>
-              ) : (
-                llms.map((llm, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between border-b border-slate-800 pb-2 last:border-0 last:pb-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-slate-900 rounded-md">
-                        <Cpu className="h-4 w-4 text-emerald-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-200">
-                          {llm.name}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {llm.provider} at {llm.url}
-                        </p>
-                      </div>
+      {items.length === 0 ? (
+        <div className="text-center py-16 text-slate-500">
+          <Globe className="h-12 w-12 mx-auto mb-4 text-slate-700" />
+          <p className="text-lg font-medium text-slate-400 mb-1">No content found</p>
+          <p className="text-sm">Make sure your integration has access to pages in your workspace.</p>
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => (
+            <Card key={item.id} className="border-slate-800 bg-slate-950/50 hover:bg-slate-900/50 transition-colors group">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className={`p-2 rounded-lg shrink-0 ${item.type === "database" ? "bg-blue-900/20" : "bg-emerald-900/20"}`}>
+                      <FileText className={`h-4 w-4 ${item.type === "database" ? "text-blue-400" : "text-emerald-400"}`} />
                     </div>
-                    <div className="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase rounded border border-emerald-500/20">
-                      Detected
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-200 truncate max-w-[200px]">{item.title}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{item.type === "database" ? "Database" : "Page"}</p>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-3 border-slate-800 bg-slate-950/50" data-testid="kpi-system">
-          <CardHeader>
-            <CardTitle className="text-white">System Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <span className={`flex h-2 w-2 mr-2 rounded-full ${status?.server_running ? "bg-emerald-500" : "bg-red-500"}`}></span>
-                <div className="ml-2 space-y-1">
-                  <p className="text-sm font-medium leading-none text-white">
-                    Backend Server
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    Port 10811 {status?.server_running ? "Running" : "Down"}
-                  </p>
+                  {item.url && (
+                    <a href={item.url} target="_blank" rel="noopener noreferrer"
+                      className="p-1.5 text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  )}
                 </div>
-              </div>
-              <div className="flex items-center">
-                <span className={`flex h-2 w-2 mr-2 rounded-full ${notionDot}`}></span>
-                <div className="ml-2 space-y-1">
-                  <p className="text-sm font-medium leading-none text-white">
-                    Notion API
-                  </p>
-                  <p className="text-xs text-slate-400">{notionLabel}</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

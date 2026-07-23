@@ -1,14 +1,21 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AppLayout } from '@/components/layout/app-layout';
-import { Dashboard } from '@/pages/dashboard';
-import { Chat } from '@/pages/chat';
+import { AppLayout } from "@/components/layout/app-layout";
+import Logging from "@/pages/Logging";
+import { Chat } from "@/pages/chat";
+import { Dashboard } from "@/pages/dashboard";
+import { DataMigration } from "@/pages/data";
+import { Explorer } from "@/pages/explorer";
+import { Help } from "@/pages/help";
+import { Plugins } from "@/pages/plugins";
+import { Settings } from "@/pages/settings";
+import { Status } from "@/pages/status";
+import { Tools } from "@/pages/tools";
+import {
+  Navigate,
+  Route,
+  BrowserRouter as Router,
+  Routes,
+} from "react-router-dom";
 import { SemanticSearch } from "./pages/search";
-import { Tools } from '@/pages/tools';
-import { Help } from '@/pages/help';
-import { Settings } from '@/pages/settings';
-import { Explorer } from '@/pages/explorer'; // New import
-import { Plugins } from '@/pages/plugins'; // New import
-import { DataMigration } from '@/pages/data'; // New import
 
 function App() {
   return (
@@ -17,11 +24,13 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/chat" element={<Chat />} />
-          <Route path="/search" element={<SemanticSearch />} /> {/* Changed from SemanticSearch */}
-          <Route path="/explorer" element={<Explorer />} /> {/* New route */}
-          <Route path="/plugins" element={<Plugins />} /> {/* New route */}
-          <Route path="/data" element={<DataMigration />} /> {/* New route */}
+          <Route path="/search" element={<SemanticSearch />} />
+          <Route path="/explorer" element={<Explorer />} />
+          <Route path="/plugins" element={<Plugins />} />
+          <Route path="/data" element={<DataMigration />} />
           <Route path="/tools" element={<Tools />} />
+          <Route path="/status" element={<Status />} />
+          <Route path="/logging" element={<Logging />} />
           <Route path="/help" element={<Help />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
