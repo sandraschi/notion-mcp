@@ -293,42 +293,26 @@ async def list_tools():
 @app.get("/api/llm-discovery")
 async def discover_llms():
     """Auto-detect local LLMs (Ollama / LM Studio)."""
+    import httpx
+
     llms = []
-    import aiohttp
-
-    # Check Ollama
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get("http://localhost:11434/api/tags", timeout=1) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    for model in data.get("models", []):
-                        llms.append(
-                            {
-                                "name": model["name"],
-                                "provider": "Ollama",
-                                "url": "http://localhost:11434",
-                            }
-                        )
-    except Exception as e:
-        logger.warning("Ollama discovery failed", error=str(e))
-
-    # Check LM Studio
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get("http://localhost:1234/v1/models", timeout=1) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    for model in data.get("data", []):
-                        llms.append(
-                            {
-                                "name": model["id"],
-                                "provider": "LM Studio",
-                                "url": "http://localhost:1234",
-                            }
-                        )
-    except Exception as e:
-        logger.warning("LM Studio discovery failed", error=str(e))
+    async with httpx.AsyncClient(timeout=2) as client:
+        try:
+            resp = await client.get("http://localhost:11434/api/tags")
+            if resp.status_code == 200:
+                data = resp.json()
+                for model in data.get("models", []):
+                    llms.append({"name": model["name"], "provider": "Ollama", "url": "http://localhost:11434"})
+        except Exception as e:
+            logger.warning("Ollama discovery failed", error=str(e))
+        try:
+            resp = await client.get("http://localhost:1234/v1/models")
+            if resp.status_code == 200:
+                data = resp.json()
+                for model in data.get("data", []):
+                    llms.append({"name": model["id"], "provider": "LM Studio", "url": "http://localhost:1234"})
+        except Exception as e:
+            logger.warning("LM Studio discovery failed", error=str(e))
 
     return {"llms": llms}
 
