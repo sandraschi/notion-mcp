@@ -1471,6 +1471,180 @@ async def orchestrate_workers(
     return await handler()
 
 
+# Block operations
+
+
+@mcp.tool(annotations=_MUTATING)
+async def append_blocks(
+    block_id: str = Field(description="Page or block ID to append children to"),
+    children: list[dict[str, Any]] = Field(description="List of block objects to append"),
+) -> dict[str, Any]:
+    """Append child blocks to an existing page or block."""
+    try:
+        initialize_notion_client()
+        result = await notion_client.append_block_children(block_id, children)
+        return {"success": True, "result": result, "message": f"Appended {len(children)} blocks."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@mcp.tool(annotations=_MUTATING)
+async def update_block(
+    block_id: str = Field(description="Block ID to update"),
+    block_type: str = Field(description="Block type (e.g. paragraph, heading_1, to_do)"),
+    content: dict[str, Any] = Field(description="Block content properties (e.g. rich_text, checked)"),
+    archived: bool | None = Field(default=None, description="Archive or unarchive the block"),
+) -> dict[str, Any]:
+    """Update a specific block's content or properties."""
+    try:
+        initialize_notion_client()
+        kwargs: dict[str, Any] = {block_type: content}
+        if archived is not None:
+            kwargs["archived"] = archived
+        result = await notion_client.update_block(block_id, **kwargs)
+        return {"success": True, "result": result, "message": "Block updated."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@mcp.tool(annotations=_DESTRUCTIVE)
+async def delete_block(
+    block_id: str = Field(description="Block ID to archive/delete"),
+) -> dict[str, Any]:
+    """Archive (soft-delete) a block by ID."""
+    try:
+        initialize_notion_client()
+        result = await notion_client.delete_block(block_id)
+        return {"success": True, "result": result, "message": "Block archived."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# Markdown page endpoints
+
+
+@mcp.tool(annotations=_READ_ONLY)
+async def get_page_markdown(
+    page_id: str = Field(description="Page ID to retrieve as markdown"),
+) -> dict[str, Any]:
+    """Retrieve page content as enhanced markdown (API 2026-03-11)."""
+    try:
+        initialize_notion_client()
+        result = await notion_client.retrieve_page_markdown(page_id)
+        return {"success": True, "markdown": result.get("markdown", ""), "page_id": page_id}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@mcp.tool(annotations=_MUTATING)
+async def update_page_markdown(
+    page_id: str = Field(description="Page ID to update"),
+    markdown: str = Field(description="Full markdown content to write to the page"),
+) -> dict[str, Any]:
+    """Update page content using enhanced markdown (API 2026-03-11)."""
+    try:
+        initialize_notion_client()
+        result = await notion_client.update_page_markdown(page_id, markdown)
+        return {"success": True, "result": result, "message": "Page updated via markdown."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# Database schema mutation
+
+
+@mcp.tool(annotations=_MUTATING)
+async def update_database_schema(
+    database_id: str = Field(description="Database ID to update"),
+    title: str | None = Field(default=None, description="New database title"),
+    properties: dict[str, Any] | None = Field(default=None, description="Property schema changes (add/remove/modify)"),
+    description: list[dict[str, Any]] | None = Field(default=None, description="Rich text description"),
+) -> dict[str, Any]:
+    """Update database properties, title, or description."""
+    try:
+        initialize_notion_client()
+        kwargs: dict[str, Any] = {}
+        if title:
+            kwargs["title"] = [{"type": "text", "text": {"content": title}}]
+        if properties:
+            kwargs["properties"] = properties
+        if description:
+            kwargs["description"] = description
+        result = await notion_client.update_database_schema(database_id, **kwargs)
+        return {"success": True, "result": result, "message": "Database schema updated."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# REST endpoints for block operations
+
+
+@app.post("/api/page/{page_id}/blocks")
+async def append_blocks_rest(page_id: str, children: list[dict[str, Any]] = Body(...)):
+    """Append child blocks to a page."""
+    try:
+        initialize_notion_client()
+        result = await notion_client.append_block_children(page_id, children)
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.patch("/api/page/{page_id}/blocks/{block_id}")
+async def update_block_rest(page_id: str, block_id: str, data: dict[str, Any] = Body(...)):
+    """Update a specific block."""
+    try:
+        initialize_notion_client()
+        result = await notion_client.update_block(block_id, **data)
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.delete("/api/page/{page_id}/blocks/{block_id}")
+async def delete_block_rest(page_id: str, block_id: str):
+    """Archive a block."""
+    try:
+        initialize_notion_client()
+        result = await notion_client.delete_block(block_id)
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/page/{page_id}/markdown")
+async def get_page_markdown_rest(page_id: str):
+    """Retrieve page as markdown."""
+    try:
+        initialize_notion_client()
+        result = await notion_client.retrieve_page_markdown(page_id)
+        return {"success": True, "markdown": result.get("markdown", ""), "page_id": page_id}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.put("/api/page/{page_id}/markdown")
+async def update_page_markdown_rest(page_id: str, markdown: str = Body(..., embed=True)):
+    """Update page via markdown."""
+    try:
+        initialize_notion_client()
+        result = await notion_client.update_page_markdown(page_id, markdown)
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.patch("/api/database/{database_id}/schema")
+async def update_database_schema_rest(database_id: str, data: dict[str, Any] = Body(...)):
+    """Update database properties."""
+    try:
+        initialize_notion_client()
+        result = await notion_client.update_database_schema(database_id, **data)
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 # Server health check
 
 

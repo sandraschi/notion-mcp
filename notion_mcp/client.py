@@ -278,6 +278,21 @@ class NotionClient:
             kwargs["page_size"] = min(page_size, 100)
         return await self._make_request("comments.list", **kwargs)
 
+    async def update_block(self, block_id: str, **kwargs) -> dict[str, Any]:
+        """Update a specific block (type, content, properties)."""
+        block_id = self.validate_page_id(block_id)
+        return await self._make_request("blocks.update", block_id=block_id, **kwargs)
+
+    async def delete_block(self, block_id: str) -> dict[str, Any]:
+        """Set a block to archived: true."""
+        block_id = self.validate_page_id(block_id)
+        return await self._make_request("blocks.delete", block_id=block_id)
+
+    async def update_database_schema(self, database_id: str, **kwargs) -> dict[str, Any]:
+        """Update database properties, title, description, or icon."""
+        database_id = self.validate_page_id(database_id)
+        return await self._make_request("databases.update", database_id=database_id, **kwargs)
+
     async def retrieve_page_markdown(self, page_id: str) -> dict[str, Any]:
         """Retrieve page content as enhanced markdown."""
         page_id = self.validate_page_id(page_id)
