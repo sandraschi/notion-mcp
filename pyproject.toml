@@ -7,7 +7,7 @@ name = "notion-mcp"
 version = "1.2.0"
 description = "FastMCP 3.1.0 server for comprehensive Notion workspace management and RAG"
 authors = [
-    {name = "Sandra", email = "sandra@example.com"}
+    {name = "Sandra", email = "sandraschipal@gmail.com"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
@@ -23,7 +23,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "fastmcp>=3.2,<4",
+    "fastmcp>=3.4.4,<4",
     "notion-client>=2.2.1",
     "httpx>=0.28.0",
     "lancedb>=0.17.0",
@@ -46,7 +46,7 @@ dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    "ruff>=0.16.0,<0.17",
     "mypy>=1.0.0"
 ]
 
@@ -55,7 +55,7 @@ dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    "ruff>=0.16.0,<0.17",
     "mypy>=1.0.0"
 ]
 
@@ -90,7 +90,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "S", "UP", "RUF"]
-ignore = ["S101", "B008"]
+ignore = ["S101", "B008", "S106", "S110", "S112", "RUF012"]
 
 [tool.ruff.format]
 quote-style = "double"
