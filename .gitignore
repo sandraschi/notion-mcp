@@ -116,3 +116,7 @@ dist/*.mcpb
 # Native/Tauri build artifacts
 native/target/
 native/gen/
+
+# Runtime logs
+*.log
+
