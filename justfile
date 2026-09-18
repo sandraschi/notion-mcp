@@ -20,13 +20,11 @@ fix:
 
 # Biome lint frontend
 lint-web:
-    Set-Location '{{justfile_directory()}}\web_sota'
-    npx @biomejs/biome ci .
+    Set-Location '{{justfile_directory()}}\web_sota'; npx @biomejs/biome ci .
 
 # Biome auto-fix frontend
 fix-web:
-    Set-Location '{{justfile_directory()}}\web_sota'
-    npx @biomejs/biome check --write .
+    Set-Location '{{justfile_directory()}}\web_sota'; npx @biomejs/biome check --write .
 
 # --- Hardening ---
 
@@ -51,8 +49,7 @@ serve:
 
 # Start full stack via web_sota/start.ps1
 dev:
-    Set-Location '{{justfile_directory()}}\web_sota'
-    .\start.ps1
+    Set-Location '{{justfile_directory()}}\web_sota'; .\start.ps1
 
 # Alias for dashboard launch
 web: dev
