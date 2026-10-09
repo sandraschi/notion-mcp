@@ -3,7 +3,7 @@ from typing import Any
 import structlog
 
 from .indexer import DocumentChunker
-from .vector_db import NotionVectorDB
+from .vector_db import DEFAULT_DB_PATH, NotionVectorDB
 
 logger = structlog.get_logger(__name__)
 
@@ -13,7 +13,7 @@ class RAGOrchestrator:
     Orchestrates the RAG lifecycle: Indexing and Searching.
     """
 
-    def __init__(self, db_path: str = "./.lancedb"):
+    def __init__(self, db_path: str = DEFAULT_DB_PATH):
         self.vector_db = NotionVectorDB(db_path)
         self.chunker = DocumentChunker()
 

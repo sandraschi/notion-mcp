@@ -1,10 +1,14 @@
 import importlib.util
 import os
+from pathlib import Path
 from typing import Any
 
 import structlog
 
 logger = structlog.get_logger(__name__)
+
+# Repo-root plugins/, never CWD-relative (BUG-063).
+DEFAULT_PLUGINS_DIR = str(Path(__file__).resolve().parents[1] / "plugins")
 
 
 class PluginManager:
@@ -13,7 +17,7 @@ class PluginManager:
     Plugins are loaded dynamically from the plugins/ directory.
     """
 
-    def __init__(self, plugins_dir: str = "./plugins"):
+    def __init__(self, plugins_dir: str = DEFAULT_PLUGINS_DIR):
         self.plugins_dir = plugins_dir
         self.plugins = {}
         if not os.path.exists(self.plugins_dir):

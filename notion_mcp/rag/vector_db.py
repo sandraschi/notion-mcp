@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 
 import lancedb
@@ -7,9 +8,13 @@ from sentence_transformers import SentenceTransformer
 
 logger = structlog.get_logger(__name__)
 
+# Repo-root .lancedb, never CWD-relative: Claude Desktop spawns stdio servers
+# with cwd=C:\Windows\System32 (BUG-063).
+DEFAULT_DB_PATH = str(Path(__file__).resolve().parents[2] / ".lancedb")
+
 
 class NotionVectorDB:
-    def __init__(self, db_path: str = "./.lancedb", model_name: str = "all-MiniLM-L6-v2"):
+    def __init__(self, db_path: str = DEFAULT_DB_PATH, model_name: str = "all-MiniLM-L6-v2"):
         self.db_path = db_path
         self.db = lancedb.connect(db_path)
         self.model = SentenceTransformer(model_name)
