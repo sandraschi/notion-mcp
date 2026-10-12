@@ -3,6 +3,7 @@ NotionMCP - Notion Workers Management via ntn CLI
 Austrian Efficiency Implementation for Worker Deployment and Management
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -54,7 +55,7 @@ async def deploy_worker(project_dir: str | None = None) -> dict[str, Any]:
     Runs `ntn workers deploy` in the specified directory.
     """
     cwd = project_dir or os.getcwd()
-    result = _run_ntn(["workers", "deploy"], timeout=120)
+    result = await asyncio.to_thread(_run_ntn, ["workers", "deploy"], timeout=120)
     if result.get("success"):
         logger.info(f"Worker deployed from {cwd}")
     else:
@@ -64,7 +65,7 @@ async def deploy_worker(project_dir: str | None = None) -> dict[str, Any]:
 
 async def list_workers() -> dict[str, Any]:
     """List deployed Notion Workers."""
-    return _run_ntn(["workers", "list"])
+    return await asyncio.to_thread(_run_ntn, ["workers", "list"])
 
 
 async def scaffold_worker(project_dir: str) -> dict[str, Any]:
@@ -74,7 +75,7 @@ async def scaffold_worker(project_dir: str) -> dict[str, Any]:
     """
     path = Path(project_dir)
     path.mkdir(parents=True, exist_ok=True)
-    result = _run_ntn(["workers", "new"], timeout=60)
+    result = await asyncio.to_thread(_run_ntn, ["workers", "new"], timeout=60)
     if result.get("success"):
         logger.info(f"Worker scaffolded at {project_dir}")
     return result
@@ -86,13 +87,14 @@ async def worker_logs(worker_name: str | None = None, tail: int = 50) -> dict[st
     if worker_name:
         args.extend(["--name", worker_name])
     args.extend(["--tail", str(tail)])
-    return _run_ntn(args)
+    return await asyncio.to_thread(_run_ntn, args)
 
 
 async def check_ntn_version() -> dict[str, Any]:
     """Check if ntn CLI is installed and return its version."""
     try:
-        result = subprocess.run(  # noqa: S603
+        result = await asyncio.to_thread(
+            subprocess.run,  # noqa: S603
             [_ntn_binary(), "--version"],
             capture_output=True,
             text=True,
