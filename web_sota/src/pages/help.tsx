@@ -32,12 +32,12 @@ export function Help() {
   }, [activeTab, fetchDoc]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="help-page">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Help & Documentation
         </h2>
-        <p className="text-slate-400">Guides, reference, and comparisons</p>
+        <p className="text-slate-300">Guides, reference, and comparisons</p>
       </div>
 
       <div className="flex gap-1 border-b border-slate-800 overflow-x-auto">
@@ -49,7 +49,7 @@ export function Help() {
             className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
               activeTab === tab.id
                 ? "border-blue-500 text-white"
-                : "border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-600"
+                : "border-transparent text-slate-300 hover:text-slate-300 hover:border-slate-600"
             }`}
           >
             {tab.label}
@@ -59,7 +59,7 @@ export function Help() {
 
       <div className="min-h-[60vh]">
         {loading ? (
-          <div className="flex justify-center py-12 text-slate-500">
+          <div className="flex justify-center py-12 text-slate-300">
             Loading...
           </div>
         ) : (

@@ -46,23 +46,23 @@ export function Plugins() {
   const available = plugins.filter((p) => p.status === "available");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-testid="plugins-page">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Plugin Registry
         </h2>
-        <p className="text-slate-400">
+        <p className="text-slate-300">
           Extend NotionMCP with SOTA integrations and local scripts
         </p>
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-widest">
+        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-widest">
           Active Plugins
         </h3>
         <div className="grid gap-4 md:grid-cols-2">
           {installed.length === 0 ? (
-            <div className="col-span-2 p-8 border border-dashed border-slate-800 rounded-lg text-center text-slate-500">
+            <div className="col-span-2 p-8 border border-dashed border-slate-800 rounded-lg text-center text-slate-300">
               No local plugins active. Start by building a script in the
               `plugins/` directory.
             </div>
@@ -86,7 +86,7 @@ export function Plugins() {
                       <CheckCircle2 className="h-3 w-3" /> Active
                     </span>
                   </div>
-                  <CardDescription className="text-slate-400">
+                  <CardDescription className="text-slate-300">
                     {plugin.description}
                   </CardDescription>
                 </CardHeader>
@@ -97,7 +97,7 @@ export function Plugins() {
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-widest">
+        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-widest">
           SOTA Marketplace (Notion Ecosystem)
         </h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -122,7 +122,7 @@ export function Plugins() {
                 <CardTitle className="text-base text-white">
                   {plugin.name}
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-500 line-clamp-2">
+                <CardDescription className="text-sm text-slate-300 line-clamp-2">
                   {plugin.description}
                 </CardDescription>
               </CardHeader>

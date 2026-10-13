@@ -30,12 +30,12 @@ export function Tools() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tools-page">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Notion MCP Tools
         </h2>
-        <p className="text-slate-400">
+        <p className="text-slate-300">
           Directly execute Notion workspace management operations
         </p>
       </div>
@@ -58,7 +58,7 @@ export function Tools() {
                   </CardTitle>
                   <Wrench className="h-4 w-4 text-blue-500" />
                 </div>
-                <CardDescription className="text-xs text-slate-400">
+                <CardDescription className="text-sm text-slate-300">
                   Workspace tool
                 </CardDescription>
               </CardHeader>
@@ -78,7 +78,7 @@ export function Tools() {
       {!loading && tools.length === 0 && (
         <div className="flex flex-col items-center justify-center p-12 border border-dashed border-slate-800 rounded-lg">
           <AlertCircle className="h-8 w-8 text-slate-600 mb-2" />
-          <p className="text-slate-500">No tools detected from backend</p>
+          <p className="text-slate-300">No tools detected from backend</p>
         </div>
       )}
     </div>

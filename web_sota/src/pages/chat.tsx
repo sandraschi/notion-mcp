@@ -89,7 +89,7 @@ function SpeakButton({ text }: { text: string }) {
           })
           .catch(() => setSpeaking(false));
       }}
-      className="p-1.5 rounded transition-colors text-slate-400 hover:text-white"
+      className="p-1.5 rounded transition-colors text-slate-300 hover:text-white"
       title={speaking ? "Stop" : "Speak"}
     >
       <Volume2 className="h-3.5 w-3.5" />
@@ -189,6 +189,73 @@ export function Chat() {
     return `You are an expert Notion workspace manager with access to pages, databases, comments, and RAG search.\n\n---\n\n## Role\n${role}`;
   }, [personalityId, customPrompt]);
 
+  const tryStreamReply = useCallback(async (text: string): Promise<boolean> => {
+    const res = await fetch(`${API_BASE}/api/llm/chat/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: [{ role: "user", content: text }] }),
+    });
+    if (!res.ok || !res.body) return false;
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    const ts = new Date().toISOString();
+    let started = false;
+    let finished = false;
+    const appendToken = (tok: string) => {
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (!started || !last || last.role !== "assistant") {
+          started = true;
+          return [...prev, { role: "assistant", content: tok, ts }];
+        }
+        const next = [...prev];
+        next[next.length - 1] = { ...last, content: last.content + tok };
+        return next;
+      });
+    };
+    const setFullReply = (reply: string) => {
+      started = true;
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && last.role === "assistant" && last.content === "") {
+          const next = [...prev];
+          next[next.length - 1] = { ...last, content: reply };
+          return next;
+        }
+        return [...prev, { role: "assistant", content: reply, ts }];
+      });
+    };
+    while (!finished) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const parts = buf.split("\n\n");
+      buf = parts.pop() ?? "";
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (payload === "[DONE]") {
+          finished = true;
+          break;
+        }
+        try {
+          const evt = JSON.parse(payload) as {
+            token?: string;
+            reply?: string;
+          };
+          if (evt.token) appendToken(evt.token);
+          else if (evt.reply) setFullReply(evt.reply);
+        } catch {
+          /* partial chunk, wait for more */
+        }
+      }
+    }
+    await reader.cancel().catch(() => {});
+    return finished;
+  }, []);
+
   const handleSend = useCallback(async () => {
     if (!input.trim() || loading) return;
     const userMsg: ChatMessage = {
@@ -200,21 +267,24 @@ export function Chat() {
     setInput("");
     setLoading(true);
     try {
-      const systemPrompt = buildSystemPrompt();
-      const res = await fetch(`${API_BASE}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userMsg.content,
-          system_prompt: systemPrompt,
-        }),
-      });
-      const data = await res.json();
-      const reply = data.reply || data.message || "No response received.";
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: reply, ts: new Date().toISOString() },
-      ]);
+      const streamed = await tryStreamReply(userMsg.content);
+      if (!streamed) {
+        const systemPrompt = buildSystemPrompt();
+        const res = await fetch(`${API_BASE}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: userMsg.content,
+            system_prompt: systemPrompt,
+          }),
+        });
+        const data = await res.json();
+        const reply = data.reply || data.message || "No response received.";
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: reply, ts: new Date().toISOString() },
+        ]);
+      }
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -228,7 +298,7 @@ export function Chat() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, buildSystemPrompt]);
+  }, [input, loading, buildSystemPrompt, tryStreamReply]);
 
   const handleExport = useCallback(() => {
     if (messages.length === 0) return;
@@ -286,17 +356,17 @@ export function Chat() {
           <h2 className="text-2xl font-bold tracking-tight text-white">
             Notion Intelligence
           </h2>
-          <p className="text-slate-400">RAG-powered chat via Local LLM</p>
+          <p className="text-slate-300">RAG-powered chat via Local LLM</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-800">
             <span
               className={`w-2 h-2 rounded-full ${providerDot} animate-pulse`}
             />
-            <span className="text-xs text-slate-400">{providerLabel}</span>
+            <span className="text-xs text-slate-300">{providerLabel}</span>
           </div>
           {skillName && (
-            <div className="bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400">
+            <div className="bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-300">
               skill:{skillName}
             </div>
           )}
@@ -316,7 +386,7 @@ export function Chat() {
             data-testid="chat-export"
             onClick={handleExport}
             disabled={messages.length === 0}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed border border-slate-800 bg-slate-900"
+            className="p-1.5 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed border border-slate-800 bg-slate-900"
             title="Export chat"
           >
             <Download className="h-4 w-4" />
@@ -326,7 +396,7 @@ export function Chat() {
             data-testid="chat-clear"
             onClick={handleClear}
             disabled={messages.length === 0}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed border border-slate-800 bg-slate-900"
+            className="p-1.5 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed border border-slate-800 bg-slate-900"
             title="Clear chat"
           >
             <Eraser className="h-4 w-4" />
@@ -353,7 +423,7 @@ export function Chat() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
               <Bot className="h-10 w-10 text-slate-600" />
-              <p className="text-slate-400 text-sm max-w-md">
+              <p className="text-slate-300 text-sm max-w-md">
                 Ask me anything about your Notion workspace. I can search pages,
                 query databases, and summarize content.
               </p>
@@ -386,7 +456,7 @@ export function Chat() {
                 className={`h-8 w-8 rounded-full flex items-center justify-center border shrink-0 ${msg.role === "user" ? "bg-slate-800 border-slate-700" : "bg-blue-900/20 border-blue-800"}`}
               >
                 {msg.role === "user" ? (
-                  <User className="h-4 w-4 text-slate-400" />
+                  <User className="h-4 w-4 text-slate-300" />
                 ) : (
                   <Bot className="h-4 w-4 text-blue-400" />
                 )}
@@ -434,7 +504,7 @@ export function Chat() {
                 type="button"
                 onClick={toggleMic}
                 title={listening ? "Stop recording" : "Voice input"}
-                className={`p-2 rounded-lg border transition-colors ${listening ? "bg-red-900/30 border-red-700 text-red-400" : "bg-slate-900 border-slate-700 text-slate-400 hover:text-white"}`}
+                className={`p-2 rounded-lg border transition-colors ${listening ? "bg-red-900/30 border-red-700 text-red-400" : "bg-slate-900 border-slate-700 text-slate-300 hover:text-white"}`}
               >
                 {listening ? (
                   <MicOff className="h-4 w-4" />

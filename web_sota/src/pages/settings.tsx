@@ -22,37 +22,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { API_BASE } from "@/lib/api";
+import { useLlmStore } from "@/store/llm";
 
 function LLMSettings() {
-  const [providers, setProviders] = useState<
-    Record<string, { name: string }[]>
-  >({});
-  const [selectedProvider, setSelectedProvider] = useState("ollama");
-  const [selectedModel, setSelectedModel] = useState("");
+  const { providers, selectedProvider, selectedModel, refresh, select } =
+    useLlmStore();
   useEffect(() => {
-    fetch(`${API_BASE}/api/llm/providers`)
-      .then((r) => r.json())
-      .then((d) => {
-        setProviders(d);
-        const savedP = localStorage.getItem("llm_provider") || "ollama";
-        const savedM = localStorage.getItem("llm_model") || "";
-        setSelectedProvider(savedP);
-        const models = d[savedP === "ollama" ? "ollama" : "lm_studio"] || [];
-        setSelectedModel(
-          savedM && models.some((m: { name: string }) => m.name === savedM)
-            ? savedM
-            : models[0]?.name || "",
-        );
-      })
-      .catch(() => {
-        setProviders({ ollama: [{ name: "llama3.2:3b" }] });
-        setSelectedModel(localStorage.getItem("llm_model") || "llama3.2:3b");
-      });
-  }, []);
-  const save = (p: string, m: string) => {
-    localStorage.setItem("llm_provider", p);
-    localStorage.setItem("llm_model", m);
-  };
+    refresh();
+  }, [refresh]);
   const models =
     providers[selectedProvider === "ollama" ? "ollama" : "lm_studio"] || [];
   return (
@@ -60,8 +37,7 @@ function LLMSettings() {
       <Select
         value={selectedProvider}
         onValueChange={(v) => {
-          setSelectedProvider(v);
-          save(v, "");
+          select(v, "");
         }}
       >
         <SelectTrigger
@@ -78,8 +54,7 @@ function LLMSettings() {
       <Select
         value={selectedModel}
         onValueChange={(v) => {
-          setSelectedModel(v);
-          save(selectedProvider, v);
+          select(selectedProvider, v);
         }}
       >
         <SelectTrigger
@@ -190,7 +165,7 @@ function NotionTokenSettings() {
           {result.msg}
         </div>
       )}
-      <p className="text-xs text-slate-500">
+      <p className="text-sm text-slate-300">
         Get your token at{" "}
         <a
           href="https://www.notion.so/my-integrations"
@@ -207,12 +182,12 @@ function NotionTokenSettings() {
 
 export function Settings() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="settings-page">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Settings
         </h2>
-        <p className="text-slate-400">
+        <p className="text-slate-300">
           Configure Notion Workspace and AI reasoning preferences
         </p>
       </div>
@@ -224,7 +199,7 @@ export function Settings() {
               <ShieldCheck className="h-5 w-5 text-emerald-500" />
               <CardTitle className="text-white">Notion Connection</CardTitle>
             </div>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-slate-300">
               API token and connection status
             </CardDescription>
           </CardHeader>
@@ -241,7 +216,7 @@ export function Settings() {
                 Local LLM Configuration
               </CardTitle>
             </div>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-slate-300">
               Provider and model selection
             </CardDescription>
           </CardHeader>
@@ -254,7 +229,7 @@ export function Settings() {
           <CardHeader>
             <CardTitle className="text-white">App Information</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-slate-400 space-y-1">
+          <CardContent className="text-sm text-slate-300 space-y-1">
             <p>notion-mcp v1.2.0 (SOTA)</p>
             <p>Dual Transport: STDIO + HTTP (10811)</p>
             <p>Frontend Port: 10810</p>

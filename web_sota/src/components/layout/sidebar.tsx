@@ -1,5 +1,6 @@
 import {
   Activity,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   Database,
@@ -11,6 +12,7 @@ import {
   Search,
   Server,
   Settings,
+  Wrench,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/common/utils";
@@ -30,6 +32,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { name: "AI Producer Chat", icon: MessageSquare, path: "/chat" },
     { name: "Plugin Registry", icon: Puzzle, path: "/plugins" },
     { name: "Data & Migration", icon: Database, path: "/data" },
+    { name: "Tools", icon: Wrench, path: "/tools" },
+    { name: "Skills", icon: BookOpen, path: "/skills" },
     { name: "Logging", icon: Activity, path: "/logging" },
     { name: "Status", icon: Server, path: "/status" },
     { name: "Settings", icon: Settings, path: "/settings" },
@@ -53,7 +57,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <button
           type="button"
           onClick={onToggle}
-          className="rounded-md p-1.5 text-slate-400 hover:bg-slate-900 hover:text-white"
+          className="rounded-md p-1.5 text-slate-300 hover:bg-slate-900 hover:text-white"
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />
@@ -72,7 +76,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               to={item.path}
               className={cn(
                 "group relative flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-slate-800 hover:text-white",
-                isActive ? "bg-slate-800 text-white" : "text-slate-400",
+                isActive ? "bg-slate-800 text-white" : "text-slate-300",
                 collapsed ? "justify-center" : "justify-start",
               )}
             >

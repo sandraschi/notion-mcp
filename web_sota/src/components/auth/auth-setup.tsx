@@ -57,7 +57,7 @@ export function AuthSetup() {
         <h2 className="text-3xl font-bold tracking-tight text-white">
           Connect to Notion
         </h2>
-        <p className="text-slate-400 max-w-lg mx-auto">
+        <p className="text-slate-300 max-w-lg mx-auto">
           Enter your Notion integration token below to connect. No .env file
           editing needed.
         </p>
@@ -114,7 +114,7 @@ export function AuthSetup() {
             </div>
             <CardTitle className="text-base text-white">Get a Token</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-slate-400 space-y-3">
+          <CardContent className="text-sm text-slate-300 space-y-3">
             <p>
               Visit the Notion Developers portal to create a new internal
               integration.
@@ -127,7 +127,7 @@ export function AuthSetup() {
             >
               Open Notion Integrations <ExternalLink className="h-3 w-3" />
             </a>
-            <ol className="list-decimal list-inside space-y-1 text-xs text-slate-500">
+            <ol className="list-decimal list-inside space-y-1 text-sm text-slate-300">
               <li>Click "New integration"</li>
               <li>Name it "NotionMCP"</li>
               <li>Copy the "Internal Integration Secret"</li>
@@ -143,12 +143,12 @@ export function AuthSetup() {
             </div>
             <CardTitle className="text-base text-white">Share Pages</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-slate-400 space-y-3">
+          <CardContent className="text-sm text-slate-300 space-y-3">
             <p>
               Go to Notion, open the pages you want the integration to access,
               and connect it.
             </p>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-xs text-slate-300">
               <Share2 className="h-3 w-3" /> Page menu {"->"} Connections {"->"}{" "}
               Add "NotionMCP"
             </div>

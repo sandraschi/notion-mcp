@@ -56,12 +56,12 @@ export function DataMigration() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-testid="data-page">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Data & Migrations
         </h2>
-        <p className="text-slate-400">
+        <p className="text-slate-300">
           Import/Export workspace data with high durability
         </p>
       </div>
@@ -80,13 +80,13 @@ export function DataMigration() {
           <CardContent>
             <div className="border-2 border-dashed border-slate-800 rounded-xl p-8 flex flex-col items-center justify-center text-center space-y-4 hover:border-emerald-500/50 transition-colors cursor-pointer group">
               <div className="p-3 bg-slate-900 rounded-full group-hover:bg-emerald-500/10 group-hover:scale-110 transition-all">
-                <FileText className="h-6 w-6 text-slate-500 group-hover:text-emerald-500" />
+                <FileText className="h-6 w-6 text-slate-300 group-hover:text-emerald-500" />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-slate-200">
                   Drop files here or click to browse
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm text-slate-300">
                   Supports .md, .json archives
                 </p>
               </div>
@@ -117,7 +117,7 @@ export function DataMigration() {
                   <p className="text-sm font-medium text-slate-200">
                     Full JSON Backup
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm text-slate-300">
                     Raw structure and metadata
                   </p>
                 </div>
@@ -136,7 +136,7 @@ export function DataMigration() {
                   <p className="text-sm font-medium text-slate-200">
                     Markdown Archive
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm text-slate-300">
                     Readable content snapshots
                   </p>
                 </div>
@@ -149,12 +149,12 @@ export function DataMigration() {
 
       {/* Previous Exports */}
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-widest flex items-center gap-2">
           <Clock className="h-4 w-4" /> Previous Exports
         </h3>
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 overflow-hidden">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-900/50 text-slate-400 font-medium">
+            <thead className="bg-slate-900/50 text-slate-300 font-medium">
               <tr>
                 <th className="px-4 py-3">ID / Reference</th>
                 <th className="px-4 py-3">Format</th>
@@ -168,7 +168,7 @@ export function DataMigration() {
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-4 py-8 text-center text-slate-500 italic"
+                    className="px-4 py-8 text-center text-slate-300 italic"
                   >
                     No backup history found.
                   </td>
@@ -195,14 +195,14 @@ export function DataMigration() {
                       <button
                         type="button"
                         title="Download Backup"
-                        className="text-slate-500 hover:text-white"
+                        className="text-slate-300 hover:text-white"
                       >
                         <Download className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
                         title="Delete Export"
-                        className="text-slate-500 hover:text-red-400"
+                        className="text-slate-300 hover:text-red-400"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

@@ -7,7 +7,14 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!dist/**", "!node_modules/**", "!.lancedb/**"]
+    "includes": [
+      "**",
+      "!dist/**",
+      "!node_modules/**",
+      "!.lancedb/**",
+      "!test-results/**",
+      "!playwright-report/**"
+    ]
   },
   "formatter": {
     "enabled": true,

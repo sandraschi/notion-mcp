@@ -68,12 +68,12 @@ export function Status() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="status-page">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white">
           System Status
         </h2>
-        <p className="text-slate-400">Backend, API, and LLM connectivity</p>
+        <p className="text-slate-300">Backend, API, and LLM connectivity</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

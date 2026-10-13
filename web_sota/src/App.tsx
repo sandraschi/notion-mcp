@@ -13,6 +13,7 @@ import { Help } from "@/pages/help";
 import Logging from "@/pages/Logging";
 import { Plugins } from "@/pages/plugins";
 import { Settings } from "@/pages/settings";
+import { Skills } from "@/pages/skills";
 import { Status } from "@/pages/status";
 import { Tools } from "@/pages/tools";
 import { SemanticSearch } from "./pages/search";
@@ -29,6 +30,7 @@ function App() {
           <Route path="/plugins" element={<Plugins />} />
           <Route path="/data" element={<DataMigration />} />
           <Route path="/tools" element={<Tools />} />
+          <Route path="/skills" element={<Skills />} />
           <Route path="/status" element={<Status />} />
           <Route path="/logging" element={<Logging />} />
           <Route path="/help" element={<Help />} />

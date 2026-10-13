@@ -150,12 +150,12 @@ export function Explorer() {
   const databases = items.filter((i) => i.type === "database");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="explorer-page">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Workspace Explorer
         </h2>
-        <p className="text-slate-400">
+        <p className="text-slate-300">
           {searched
             ? `${items.length} results for "${query}"`
             : items.length > 0
@@ -166,7 +166,7 @@ export function Explorer() {
 
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
           <input
             type="text"
             placeholder="Search pages and databases..."
@@ -198,13 +198,13 @@ export function Explorer() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center p-12 text-slate-500">
+        <div className="flex justify-center p-12 text-slate-300">
           Loading...
         </div>
       ) : items.length === 0 ? (
-        <div className="text-center py-16 text-slate-500">
+        <div className="text-center py-16 text-slate-300">
           <Globe className="h-12 w-12 mx-auto mb-4 text-slate-700" />
-          <p className="text-lg font-medium text-slate-400 mb-1">
+          <p className="text-lg font-medium text-slate-300 mb-1">
             {searched ? "No results found" : "No content yet"}
           </p>
           <p className="text-sm">
@@ -235,7 +235,7 @@ export function Explorer() {
                       <p className="text-sm font-medium text-slate-200 truncate max-w-[300px]">
                         {item.title || "Untitled"}
                       </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-300 mt-0.5">
                         {item.type === "database" ? "Database" : "Page"}{" "}
                         {item.last_edited &&
                           ` · ${formatDate(item.last_edited)}`}
@@ -253,7 +253,7 @@ export function Explorer() {
                         href={item.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 text-slate-500 hover:text-white transition-colors"
+                        className="p-2 text-slate-300 hover:text-white transition-colors"
                         title="Open in Notion"
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -287,7 +287,7 @@ export function Explorer() {
                   <h3 className="text-lg font-bold text-white truncate">
                     {selectedPage.title}
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-slate-300 mt-0.5">
                     {selectedPage.blocks?.length || 0} blocks
                   </p>
                 </div>
@@ -295,7 +295,7 @@ export function Explorer() {
                   <button
                     type="button"
                     onClick={() => setPageView("blocks")}
-                    className={`px-3 py-1.5 text-xs rounded ${pageView === "blocks" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white"}`}
+                    className={`px-3 py-1.5 text-xs rounded ${pageView === "blocks" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300 hover:text-white"}`}
                   >
                     Blocks
                   </button>
@@ -304,7 +304,7 @@ export function Explorer() {
                     onClick={() => {
                       if (selectedPage) loadMarkdown(selectedPage.id);
                     }}
-                    className={`px-3 py-1.5 text-xs rounded ${pageView === "markdown" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white"}`}
+                    className={`px-3 py-1.5 text-xs rounded ${pageView === "markdown" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300 hover:text-white"}`}
                   >
                     Markdown
                   </button>
@@ -313,7 +313,7 @@ export function Explorer() {
                       href={selectedPage.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors ml-1"
+                      className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition-colors ml-1"
                       title="Open in Notion"
                     >
                       <ExternalLink className="h-4 w-4" />
@@ -322,7 +322,7 @@ export function Explorer() {
                   <button
                     type="button"
                     onClick={() => setSelectedPage(null)}
-                    className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                    className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -331,7 +331,7 @@ export function Explorer() {
               <div className="flex-1 overflow-y-auto p-5">
                 {pageView === "blocks" ? (
                   pageLoading ? (
-                    <div className="text-center py-8 text-slate-500">
+                    <div className="text-center py-8 text-slate-300">
                       Loading content...
                     </div>
                   ) : selectedPage.blocks && selectedPage.blocks.length > 0 ? (
@@ -384,12 +384,12 @@ export function Explorer() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-slate-500">
+                    <div className="text-center py-8 text-slate-300">
                       No block content available.
                     </div>
                   )
                 ) : markdownLoading ? (
-                  <div className="text-center py-8 text-slate-500">
+                  <div className="text-center py-8 text-slate-300">
                     Loading markdown...
                   </div>
                 ) : (
@@ -403,7 +403,7 @@ export function Explorer() {
                       <button
                         type="button"
                         onClick={() => loadMarkdown(selectedPage.id)}
-                        className="px-3 py-1.5 text-xs rounded bg-slate-800 text-slate-400 hover:text-white"
+                        className="px-3 py-1.5 text-xs rounded bg-slate-800 text-slate-300 hover:text-white"
                       >
                         Reload
                       </button>

@@ -70,23 +70,24 @@ export function Dashboard() {
     return <AuthSetup />;
   }
 
-  const _pages = items.filter((i) => i.type === "page");
-
   return (
     <div className="space-y-8" data-testid="dashboard">
-      <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-slate-800 rounded-xl p-8">
+      <div
+        data-testid="dashboard-hero"
+        className="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-slate-800 rounded-xl p-8"
+      >
         <div className="flex items-center gap-3 mb-4">
           <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center">
             <BookOpen className="h-5 w-5 text-white" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">notion-mcp</h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-300">
               MCP server for Notion workspace management
             </p>
           </div>
         </div>
-        <p className="text-slate-400 max-w-2xl mb-6 leading-relaxed">
+        <p className="text-slate-300 max-w-2xl mb-6 leading-relaxed">
           Browse, search, and manage your Notion pages and databases through a
           local MCP server.
           {toolCount > 0 &&
@@ -127,9 +128,9 @@ export function Dashboard() {
       )}
 
       {items.length === 0 ? (
-        <div className="text-center py-16 text-slate-500">
+        <div className="text-center py-16 text-slate-300">
           <Globe className="h-12 w-12 mx-auto mb-4 text-slate-700" />
-          <p className="text-lg font-medium text-slate-400 mb-1">
+          <p className="text-lg font-medium text-slate-300 mb-1">
             No content yet
           </p>
           <p className="text-sm">
@@ -147,7 +148,7 @@ export function Dashboard() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-white">Recent Content</h2>
-            <p className="text-xs text-slate-500">{items.length} items</p>
+            <p className="text-xs text-slate-300">{items.length} items</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {items.slice(0, 18).map((item) => (
@@ -169,7 +170,7 @@ export function Dashboard() {
                         <p className="text-sm font-medium text-slate-200 truncate max-w-[180px]">
                           {item.title}
                         </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-slate-300 mt-0.5">
                           {item.type === "database" ? "Database" : "Page"}
                         </p>
                       </div>
@@ -179,7 +180,7 @@ export function Dashboard() {
                         href={item.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1.5 text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        className="p-1.5 text-slate-300 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
                       </a>

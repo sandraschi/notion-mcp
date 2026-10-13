@@ -49,8 +49,42 @@ $webRel = if ($cfg.WebRoot) { $cfg.WebRoot } else { 'webapp\frontend' }
 $webRoot = if ([System.IO.Path]::IsPathRooted($webRel)) { $webRel } else { Join-Path $repoRoot $webRel }
 if (-not (Test-Path -LiteralPath $webRoot)) { $webRoot = $PSScriptRoot }
 
+function Test-PortOpen {
+    param([int]$Port)
+    $tcp = New-Object Net.Sockets.TcpClient
+    try {
+        $iar = $tcp.BeginConnect('127.0.0.1', $Port, $null, $null)
+        return $iar.AsyncWaitHandle.WaitOne(800)
+    } catch { return $false } finally { $tcp.Close() }
+}
+
+function Free-PortIfStale {
+    param([int]$Port)
+    # Standalone mode only: clear holders left by crashed runs. Only stops
+    # known dev processes (python/uv/node/backend exe); foreign holders are
+    # reported and left alone, never killed.
+    $conns = @()
+    try { $conns = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue } catch { return }
+    foreach ($c in $conns) {
+        $proc = $null
+        try { $proc = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue } catch { continue }
+        if ($null -eq $proc) { continue }
+        $name = $proc.ProcessName.ToLower()
+        if ($name -in @('python', 'uv', 'node', 'notion-mcp-backend', 'notion-mcp-native')) {
+            Write-Host "Stopping stale $($proc.ProcessName) (pid $($proc.Id)) on :$Port ..." -ForegroundColor Yellow
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        } else {
+            Write-Host "Port :$Port held by $($proc.ProcessName) (pid $($proc.Id)) - leaving it alone." -ForegroundColor Yellow
+        }
+    }
+}
+
 # 1. Start Backend
 if (-not $FrontendOnly -and $backendPort -gt 0 -and $cfg.Backend.Kind -ne 'none') {
+    if ($ReuseIfRunning -and (Test-PortOpen $backendPort)) {
+        Write-Host "Backend :$backendPort already answering (-ReuseIfRunning), skipping start." -ForegroundColor Green
+    } else {
+    Free-PortIfStale $backendPort
     Write-Host "Starting backend on :$backendPort ..." -ForegroundColor Cyan
     $bWorkDir = if ($cfg.Backend.WorkDir) {
         if ([System.IO.Path]::IsPathRooted($cfg.Backend.WorkDir)) { $cfg.Backend.WorkDir } else { Join-Path $repoRoot $cfg.Backend.WorkDir }
@@ -77,10 +111,15 @@ if (-not $FrontendOnly -and $backendPort -gt 0 -and $cfg.Backend.Kind -ne 'none'
 
     $bCmd = "`$env:PYTHONPATH = '$pyPath'; `$env:WEB_PORT = '$backendPort'; Set-Location '$bWorkDir'; uv run --project '$repoRoot' $backendExec"
     Start-Process powershell.exe -ArgumentList @('-NoProfile', '-NoExit', '-Command', $bCmd) -WorkingDirectory $bWorkDir
+    }
 }
 
 # 2. Start Frontend
 if (-not $BackendOnly -and $frontendPort -gt 0 -and (Test-Path -LiteralPath $webRoot)) {
+    if ($ReuseIfRunning -and (Test-PortOpen $frontendPort)) {
+        Write-Host "Frontend :$frontendPort already answering (-ReuseIfRunning), skipping start." -ForegroundColor Green
+    } else {
+    Free-PortIfStale $frontendPort
     Write-Host "Starting frontend on :$frontendPort ..." -ForegroundColor Cyan
     if ($cfg.Frontend.PortEnvVar) { Set-Item -Path "Env:$($cfg.Frontend.PortEnvVar)" -Value "$frontendPort" }
     if ($cfg.Frontend.ApiTargetEnv) { Set-Item -Path "Env:$($cfg.Frontend.ApiTargetEnv)" -Value "http://127.0.0.1:$backendPort" }
@@ -90,6 +129,7 @@ if (-not $BackendOnly -and $frontendPort -gt 0 -and (Test-Path -LiteralPath $web
         Start-Process cmd.exe -ArgumentList @($cmdFlag, "npm run dev -- -p $frontendPort -H 127.0.0.1") -WorkingDirectory $webRoot
     } else {
         Start-Process cmd.exe -ArgumentList @($cmdFlag, "npm run dev -- --port $frontendPort --host 127.0.0.1") -WorkingDirectory $webRoot
+    }
     }
 }
 
