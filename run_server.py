@@ -6,6 +6,8 @@ import os
 import sys
 from pathlib import Path
 
+import uvicorn
+
 if getattr(sys, "frozen", False):
     base = Path(sys._MEIPASS)
 else:
@@ -16,7 +18,7 @@ if str(base) not in sys.path:
 os.environ.setdefault("MCP_TRANSPORT", "http")
 
 if __name__ == "__main__":
-    from notion_mcp.server import app
+    from server import app
 
     host = os.environ.get("NOTION_HOST", "127.0.0.1")
     port = int(os.environ.get("NOTION_PORT", os.environ.get("MCP_PORT", "10811")))

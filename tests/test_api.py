@@ -11,6 +11,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+
 from notion_mcp.automations import AutomationManager
 
 # Import the modules to test
@@ -430,7 +431,11 @@ class TestErrorHandling:
         mock_client = AsyncMock()
         mock_client.pages.retrieve = AsyncMock(
             side_effect=APIResponseError(
-                code=APIErrorCode.ObjectNotFound, status=404, message="Object not found", headers=Mock(), raw_body_text=""
+                code=APIErrorCode.ObjectNotFound,
+                status=404,
+                message="Object not found",
+                headers=Mock(),
+                raw_body_text="",
             )
         )
 
@@ -454,7 +459,7 @@ class TestErrorHandling:
 
         client = NotionClient("test_token")
         client.client = mock_client
-        
+
         with pytest.raises(Exception, match="Rate limit exceeded"):
             await client.get_page("12345678901234567890123456789012")
 

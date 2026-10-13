@@ -35,10 +35,10 @@ async def mcp_server():
         mock_client.return_value = mock_instance
 
         # Import the server module
-        import server
-
         # Build a tools proxy that wraps FastMCP 3.3+ tool.run(arguments=dict)
         import functools
+
+        import server
 
         tools_list = await server.mcp.list_tools()
         tools_proxy = {}
@@ -597,7 +597,7 @@ class TestAustrianEfficiencyFeatures:
 
             result = await mcp_server.tools["create_page"](
                 title="日本語テスト - Anime Research 📚",
-                content="Testing 日本語 support for weeb academic content. こんにちは、世界！",
+                content="Testing 日本語 support for weeb academic content. こんにちは、世界！",  # noqa: RUF001 -- fullwidth exclamation is intentional CJK test content
             )
 
             assert result["success"] is True
