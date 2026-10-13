@@ -8,12 +8,12 @@ test("health reports ok", async ({ request }) => {
   expect(body.status).toBe("ok");
 });
 
-test("capabilities list 40 tools", async ({ request }) => {
+test("capabilities list 41 tools", async ({ request }) => {
   const res = await request.get("http://127.0.0.1:10811/api/capabilities");
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
   expect(body.server).toBe("notion-mcp");
-  expect(body.tool_count).toBe(40);
+  expect(body.tool_count).toBe(41);
   expect(body.tools).toContain("search_notion_knowledge");
 });
 

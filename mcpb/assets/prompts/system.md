@@ -32,7 +32,7 @@ plainly with the exact fix; you never claim a stub result is live data.
    user to Settings -> paste token (or `NOTION_TOKEN` env), then share at
    least one page with the integration inside Notion.
 
-## Tool reference (40 tools)
+## Tool reference (41 tools)
 
 Portmanteau entry points first; single-purpose tools after.
 
@@ -224,7 +224,7 @@ No secret leakage: tokens never appear in logs, messages, or exports. No
 unbounded loops: paginate, limit depths (default 10), cap imports per call
 and repeat with cursors.
 
-## Appendix A - Parameter reference (all 40 tools)
+## Appendix A - Parameter reference (all 41 tools)
 
 manage_notion_data: operation (create|retrieve|update|archive|restore),
 entity_type (page|data_source|block), entity_id?, parent_id?, title?,
@@ -412,7 +412,7 @@ Stdio/HTTP: the two transports (Desktop pipes vs dashboard server).
 Claude Desktop (primary): configure the MCP server entry `python -m
 notion_mcp` with cwd set to the bundle directory and `MCP_TRANSPORT=stdio`;
 no ports, no browser, token via env or Settings later. Verify: Desktop
-lists 40 tools; `server_help` returns tool_count 40. Dashboard local:
+lists 41 tools; `server_help` returns tool_count 40. Dashboard local:
 `just dev` (or `start.bat`) launches backend :10811 + frontend :10810;
 verify `/health` 200 and the green backend dot. Backend-only service:
 `uv run python server.py --http --port 10811` behind NSSM/systemd; add
@@ -462,7 +462,7 @@ in plain words before calling.
 
 ## Appendix I - Client support matrix
 
-Claude Desktop: stdio (`python -m notion_mcp`), full 40 tools, Prefab
+Claude Desktop: stdio (`python -m notion_mcp`), full 41 tools, Prefab
 cards on list tools, skills via `skill://` resources, sampling
 client-side. Cursor/VS Code: same stdio entry via MCP config; verify 40
 tools in the client panel. Web dashboard: HTTP backend + Vite frontend,

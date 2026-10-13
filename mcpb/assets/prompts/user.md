@@ -3,7 +3,7 @@
 notion-mcp connects your Notion workspace to AI assistants and to a local web
 dashboard. Through it you can find anything in your workspace, create and edit
 pages, run databases, discuss with comments, back everything up, and automate
-workflows - from chat ("find my roadmap") or from code (40 MCP tools).
+workflows - from chat ("find my roadmap") or from code (41 MCP tools).
 
 ## Install and launch
 
@@ -218,7 +218,7 @@ full scan; `force_rebuild=True` wipes first. The call returns at once -
 wait a minute, then search. Tip: scope sweeps while iterating, full-scan
 overnight.
 
-`server_help()` with no arguments returns the live inventory (40 tools),
+`server_help()` with no arguments returns the live inventory (41 tools),
 URLs, and pointers. Call it whenever a new session starts so capabilities
 are grounded, not guessed. Tip: paste its tool list into your notes.
 
