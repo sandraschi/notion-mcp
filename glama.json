@@ -10,7 +10,7 @@
         "PYTHONPATH": "${workspaceFolder}/notion-mcp",
         "PYTHONUNBUFFERED": "1"
       },
-      "description": "FastMCP 3.4 compatible MCP server for comprehensive Notion workspace management and RAG-powered semantic discovery. 40 tools including pages, databases, RAG synchronization, and semantic search.",
+      "description": "FastMCP 3.4 compatible MCP server for comprehensive Notion workspace management and RAG-powered semantic discovery. 41 tools including pages, databases, RAG synchronization, and semantic search.",
       "capabilities": {
         "tools": {
           "enabled": true
@@ -57,11 +57,11 @@
     "sandraschi"
   ],
   "name": "notion-mcp",
-  "description": "FastMCP 3.4 compatible MCP server for comprehensive Notion workspace management and RAG-powered semantic discovery. 40 tools including pages, databases, RAG synchronization, and semantic search. SOTA 2026.",
+  "description": "FastMCP 3.4 compatible MCP server for comprehensive Notion workspace management and RAG-powered semantic discovery. 41 tools including pages, databases, RAG synchronization, and semantic search. SOTA 2026.",
   "type": "mcp_server",
   "status": "production",
   "framework": "FastMCP 3.4",
-  "tools": 40,
+  "tools": 41,
   "transport": [
     "stdio"
   ],

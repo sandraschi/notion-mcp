@@ -1,8 +1,15 @@
 # notion-mcp — Tools
 
-40 MCP tools (stdio) + REST mirror at `http://127.0.0.1:10811`.
+41 MCP tools (stdio) + REST mirror at `http://127.0.0.1:10811`.
 Full inventory: `GET /api/tools`, `GET /api/capabilities`, or the
 `server_help` tool. Per-tool docs: `notion_mcp/skills/notion-expert/SKILL.md`.
+
+## Agentic
+
+- `notion_agentic_workflow` — sampling-backed planner (SEP-1577): grounds
+  the goal with a workspace search, then borrows the client LLM via
+  `ctx.sample()` for a numbered tool-call plan. Unavailable hosts get an
+  explicit error, never a guess.
 
 ## Portmanteau (consolidated entry points)
 

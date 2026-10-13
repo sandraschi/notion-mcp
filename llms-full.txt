@@ -2,7 +2,7 @@
 
 ## Overview
 
-notion-mcp is a FastMCP 3.4 MCP server that provides comprehensive Notion workspace management. It exposes 40 MCP tools for page management, database operations, collaboration, RAG-powered semantic search, automations, webhook management, and Notion Workers orchestration.
+notion-mcp is a FastMCP 3.4 MCP server that provides comprehensive Notion workspace management. It exposes 41 MCP tools for page management, database operations, collaboration, RAG-powered semantic search, automations, webhook management, and Notion Workers orchestration.
 
 **Version**: 1.2.0
 **Ports**: Frontend 10810, Backend 10811
@@ -122,7 +122,7 @@ notion-mcp is a FastMCP 3.4 MCP server that provides comprehensive Notion worksp
 ## Architecture
 
 ```
-server.py → FastMCP (40 tools) + FastAPI (REST endpoints)
+server.py → FastMCP (41 tools) + FastAPI (REST endpoints)
   ├── notion_mcp/client.py — Notion API client (Comments API, markdown endpoints)
   ├── notion_mcp/pages.py — Page operations
   ├── notion_mcp/databases.py — Database operations

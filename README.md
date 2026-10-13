@@ -4,7 +4,7 @@ A bridge between your Notion workspace and the world of AI tools. Browse pages, 
 
 ## What is this?
 
-notion-mcp is a Python server that connects to your Notion workspace and exposes 40 MCP tools for managing pages, databases, comments, and content. It comes with a web dashboard for browsing and searching your workspace visually.
+notion-mcp is a Python server that connects to your Notion workspace and exposes 41 MCP tools for managing pages, databases, comments, and content. It comes with a web dashboard for browsing and searching your workspace visually.
 
 ```
 Just installed? Start here:
@@ -124,7 +124,7 @@ docs/                  -- Additional documentation
 
 - [Onboarding](docs/ONBOARDING.md) — first-timer path: token, verify, try-it
 - [Development](docs/DEVELOPMENT.md) — setup, gates, layout, conventions
-- [Tools](docs/TOOLS.md) — all 40 MCP tools + REST endpoints
+- [Tools](docs/TOOLS.md) — all 41 MCP tools + REST endpoints
 - [About Notion](docs/about-notion.md) — history, community, usage stats
 - [Note Apps Comparison](docs/note-apps-comparison.md) — Notion vs Obsidian vs others
 - [llms-full.txt](llms-full.txt) — full technical reference
