@@ -1,12 +1,12 @@
+import { CheckCircle2, Cpu, Plus, Zap } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CheckCircle2, Cpu, Plus, Zap } from "lucide-react";
 import { API_BASE } from "@/lib/api";
-import { useEffect, useState } from "react";
 
 interface Plugin {
   id: string;
@@ -19,19 +19,19 @@ interface Plugin {
 export function Plugins() {
   const [plugins, setPlugins] = useState<Plugin[]>([]);
 
-  const fetchPlugins = async () => {
+  const fetchPlugins = useCallback(async () => {
     try {
-      const res = await fetch(API_BASE + "/api/plugins");
+      const res = await fetch(`${API_BASE}/api/plugins`);
       const data = await res.json();
       setPlugins(data.plugins || []);
     } catch (error) {
       console.warn("Plugins fetch failed", error);
     }
-  };
+  }, []);
 
   const installPlugin = async (id: string) => {
     try {
-      await fetch(API_BASE + `/api/plugins/install/${id}`, { method: "POST" });
+      await fetch(`${API_BASE}/api/plugins/install/${id}`, { method: "POST" });
       fetchPlugins();
     } catch (error) {
       console.warn("Install failed", error);
@@ -40,7 +40,7 @@ export function Plugins() {
 
   useEffect(() => {
     fetchPlugins();
-  }, []);
+  }, [fetchPlugins]);
 
   const installed = plugins.filter((p) => p.status === "installed");
   const available = plugins.filter((p) => p.status === "available");
@@ -112,6 +112,7 @@ export function Plugins() {
                     <Zap className="h-5 w-5 text-blue-400" />
                   </div>
                   <button
+                    type="button"
                     onClick={() => installPlugin(plugin.id)}
                     className="text-xs font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1"
                   >

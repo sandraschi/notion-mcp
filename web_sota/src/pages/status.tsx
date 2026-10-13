@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Cpu, Database, FileText, Users } from "lucide-react";
-import { API_BASE } from "@/lib/api";
 import { useCallback, useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_BASE } from "@/lib/api";
 
 interface StatusData {
   authenticated: boolean;
@@ -31,15 +31,15 @@ export function Status() {
     setLoading(true);
     try {
       const [statusRes, llmsRes] = await Promise.all([
-        fetch(API_BASE + "/api/status"),
-        fetch(API_BASE + "/api/llm-discovery"),
+        fetch(`${API_BASE}/api/status`),
+        fetch(`${API_BASE}/api/llm-discovery`),
       ]);
       const statusData = await statusRes.json();
       const llmsData = await llmsRes.json();
       setStatus(statusData);
       setLlms(llmsData.llms || []);
       if (statusData.authenticated) {
-        const statsRes = await fetch(API_BASE + "/api/stats");
+        const statsRes = await fetch(`${API_BASE}/api/stats`);
         if (statsRes.ok) {
           const statsData = await statsRes.json();
           setStats(statsData);
@@ -52,7 +52,9 @@ export function Status() {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const notionDot = status?.authenticated ? "bg-emerald-500" : "bg-red-500";
   const notionLabel = status?.authenticated ? "Connected" : "No token set";
@@ -68,51 +70,69 @@ export function Status() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">System Status</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-white">
+          System Status
+        </h2>
         <p className="text-slate-400">Backend, API, and LLM connectivity</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-slate-800 bg-slate-950/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-200">API Requests</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-200">
+              API Requests
+            </CardTitle>
             <FileText className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.total_requests ?? "?"}</div>
-            <p className="text-xs text-slate-400">This session</p>
+            <div className="text-2xl font-bold text-white">
+              {stats?.total_requests ?? "?"}
+            </div>
+            <p className="text-sm text-slate-300">This session</p>
           </CardContent>
         </Card>
         <Card className="border-slate-800 bg-slate-950/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-200">API Errors</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-200">
+              API Errors
+            </CardTitle>
             <Database className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.total_errors ?? "?"}</div>
-            <p className="text-xs text-slate-400">This session</p>
+            <div className="text-2xl font-bold text-white">
+              {stats?.total_errors ?? "?"}
+            </div>
+            <p className="text-sm text-slate-300">This session</p>
           </CardContent>
         </Card>
         <Card className="border-slate-800 bg-slate-950/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-200">Success Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-200">
+              Success Rate
+            </CardTitle>
             <Users className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {stats?.success_rate != null ? `${(stats.success_rate * 100).toFixed(0)}%` : "?"}
+              {stats?.success_rate != null
+                ? `${(stats.success_rate * 100).toFixed(0)}%`
+                : "?"}
             </div>
-            <p className="text-xs text-slate-400">Notion API calls</p>
+            <p className="text-sm text-slate-300">Notion API calls</p>
           </CardContent>
         </Card>
         <Card className="border-slate-800 bg-slate-950/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-200">LLMs Found</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-200">
+              LLMs Found
+            </CardTitle>
             <Cpu className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">{llms.length}</div>
-            <p className="text-xs text-slate-400">{llms.length > 0 ? "Ollama / LM Studio" : "None detected"}</p>
+            <p className="text-sm text-slate-300">
+              {llms.length > 0 ? "Ollama / LM Studio" : "None detected"}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -124,17 +144,23 @@ export function Status() {
         <CardContent>
           <div className="space-y-4">
             <div className="flex items-center">
-              <span className={`flex h-2 w-2 mr-2 rounded-full ${status?.server_running ? "bg-emerald-500" : "bg-red-500"}`}></span>
+              <span
+                className={`flex h-2 w-2 mr-2 rounded-full ${status?.server_running ? "bg-emerald-500" : "bg-red-500"}`}
+              ></span>
               <div className="ml-2 space-y-1">
                 <p className="text-sm font-medium text-white">Backend Server</p>
-                <p className="text-xs text-slate-400">Port 10811 {status?.server_running ? "Running" : "Down"}</p>
+                <p className="text-sm text-slate-300">
+                  Port 10811 {status?.server_running ? "Running" : "Down"}
+                </p>
               </div>
             </div>
             <div className="flex items-center">
-              <span className={`flex h-2 w-2 mr-2 rounded-full ${notionDot}`}></span>
+              <span
+                className={`flex h-2 w-2 mr-2 rounded-full ${notionDot}`}
+              ></span>
               <div className="ml-2 space-y-1">
                 <p className="text-sm font-medium text-white">Notion API</p>
-                <p className="text-xs text-slate-400">{notionLabel}</p>
+                <p className="text-sm text-slate-300">{notionLabel}</p>
               </div>
             </div>
           </div>
@@ -148,13 +174,20 @@ export function Status() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {llms.map((llm, i) => (
-                <div key={i} className="flex items-center justify-between border-b border-slate-800 pb-2 last:border-0 last:pb-0">
+              {llms.map((llm) => (
+                <div
+                  key={`${llm.provider}-${llm.name}`}
+                  className="flex items-center justify-between border-b border-slate-800 pb-2 last:border-0 last:pb-0"
+                >
                   <div>
                     <p className="text-sm text-slate-200">{llm.name}</p>
-                    <p className="text-xs text-slate-500">{llm.provider} at {llm.url}</p>
+                    <p className="text-sm text-slate-300">
+                      {llm.provider} at {llm.url}
+                    </p>
                   </div>
-                  <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase rounded border border-emerald-500/20">Detected</span>
+                  <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase rounded border border-emerald-500/20">
+                    Detected
+                  </span>
                 </div>
               ))}
             </div>

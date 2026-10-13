@@ -1,6 +1,12 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { ExternalLink, FileText, Globe, Search as SearchIcon, X } from "lucide-react";
+import {
+  ExternalLink,
+  FileText,
+  Globe,
+  Search as SearchIcon,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { API_BASE } from "@/lib/api";
 
 interface NotionItem {
@@ -35,7 +41,7 @@ export function Explorer() {
     setLoading(true);
     setSearched(false);
     try {
-      const res = await fetch(API_BASE + "/api/recent?limit=50");
+      const res = await fetch(`${API_BASE}/api/recent?limit=50`);
       if (res.ok) {
         const data = await res.json();
         setItems(data.items || []);
@@ -48,11 +54,14 @@ export function Explorer() {
   }, []);
 
   const searchItems = useCallback(async () => {
-    if (!query.trim()) { fetchRecent(); return; }
+    if (!query.trim()) {
+      fetchRecent();
+      return;
+    }
     setLoading(true);
     setSearched(true);
     try {
-      const res = await fetch(API_BASE + "/api/search", {
+      const res = await fetch(`${API_BASE}/api/search`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: query.trim() }),
@@ -73,7 +82,7 @@ export function Explorer() {
     setPageView("blocks");
     setMarkdownText("");
     try {
-      const res = await fetch(API_BASE + `/api/page/${pageId}`);
+      const res = await fetch(`${API_BASE}/api/page/${pageId}`);
       if (res.ok) {
         const data = await res.json();
         setSelectedPage(data);
@@ -89,7 +98,7 @@ export function Explorer() {
     setMarkdownLoading(true);
     setPageView("markdown");
     try {
-      const res = await fetch(API_BASE + `/api/page/${pageId}/markdown`);
+      const res = await fetch(`${API_BASE}/api/page/${pageId}/markdown`);
       if (res.ok) {
         const data = await res.json();
         setMarkdownText(data.markdown || "");
@@ -101,22 +110,27 @@ export function Explorer() {
     }
   }, []);
 
-  const saveMarkdown = useCallback(async (pageId: string) => {
-    setMarkdownSaving(true);
-    try {
-      await fetch(API_BASE + `/api/page/${pageId}/markdown`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markdown: markdownText }),
-      });
-    } catch {
-      console.warn("Failed to save markdown");
-    } finally {
-      setMarkdownSaving(false);
-    }
-  }, [markdownText]);
+  const saveMarkdown = useCallback(
+    async (pageId: string) => {
+      setMarkdownSaving(true);
+      try {
+        await fetch(`${API_BASE}/api/page/${pageId}/markdown`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ markdown: markdownText }),
+        });
+      } catch {
+        console.warn("Failed to save markdown");
+      } finally {
+        setMarkdownSaving(false);
+      }
+    },
+    [markdownText],
+  );
 
-  useEffect(() => { fetchRecent(); }, [fetchRecent]);
+  useEffect(() => {
+    fetchRecent();
+  }, [fetchRecent]);
 
   const formatDate = (iso: string) => {
     if (!iso) return "";
@@ -127,7 +141,9 @@ export function Explorer() {
       if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
       if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
       return d.toLocaleDateString();
-    } catch { return ""; }
+    } catch {
+      return "";
+    }
   };
 
   const pages = items.filter((i) => i.type === "page");
@@ -136,7 +152,9 @@ export function Explorer() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">Workspace Explorer</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-white">
+          Workspace Explorer
+        </h2>
         <p className="text-slate-400">
           {searched
             ? `${items.length} results for "${query}"`
@@ -154,11 +172,14 @@ export function Explorer() {
             placeholder="Search pages and databases..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") searchItems(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") searchItems();
+            }}
             className="w-full rounded-lg border border-slate-800 bg-slate-950 pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none focus:ring-2 focus:ring-blue-500/50"
           />
         </div>
         <button
+          type="button"
           onClick={searchItems}
           disabled={loading || !query.trim()}
           className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-30 text-sm text-white transition-colors"
@@ -166,43 +187,76 @@ export function Explorer() {
           Search
         </button>
         {searched && (
-          <button onClick={fetchRecent} className="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm text-slate-300 transition-colors border border-slate-700">
+          <button
+            type="button"
+            onClick={fetchRecent}
+            className="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm text-slate-300 transition-colors border border-slate-700"
+          >
             Clear
           </button>
         )}
       </div>
 
       {loading ? (
-        <div className="flex justify-center p-12 text-slate-500">Loading...</div>
+        <div className="flex justify-center p-12 text-slate-500">
+          Loading...
+        </div>
       ) : items.length === 0 ? (
         <div className="text-center py-16 text-slate-500">
           <Globe className="h-12 w-12 mx-auto mb-4 text-slate-700" />
-          <p className="text-lg font-medium text-slate-400 mb-1">{searched ? "No results found" : "No content yet"}</p>
-          <p className="text-sm">{searched ? "Try a different search term." : "Make sure your Notion integration has access to pages."}</p>
+          <p className="text-lg font-medium text-slate-400 mb-1">
+            {searched ? "No results found" : "No content yet"}
+          </p>
+          <p className="text-sm">
+            {searched
+              ? "Try a different search term."
+              : "Make sure your Notion integration has access to pages."}
+          </p>
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {items.map((item) => (
-            <Card key={item.id} className="border-slate-800 bg-slate-950/50 hover:bg-slate-900/50 transition-colors group cursor-pointer" onClick={() => item.type === "page" && openPage(item.id)}>
+            <Card
+              key={item.id}
+              className="border-slate-800 bg-slate-950/50 hover:bg-slate-900/50 transition-colors group cursor-pointer"
+              onClick={() => item.type === "page" && openPage(item.id)}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className={`p-2 rounded-lg shrink-0 ${item.type === "database" ? "bg-blue-900/20" : "bg-emerald-900/20"}`}>
-                      <FileText className={`h-4 w-4 ${item.type === "database" ? "text-blue-400" : "text-emerald-400"}`} />
+                    <div
+                      className={`p-2 rounded-lg shrink-0 ${item.type === "database" ? "bg-blue-900/20" : "bg-emerald-900/20"}`}
+                    >
+                      <FileText
+                        className={`h-4 w-4 ${item.type === "database" ? "text-blue-400" : "text-emerald-400"}`}
+                      />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-200 truncate max-w-[300px]">{item.title || "Untitled"}</p>
+                      <p className="text-sm font-medium text-slate-200 truncate max-w-[300px]">
+                        {item.title || "Untitled"}
+                      </p>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        {item.type === "database" ? "Database" : "Page"} {item.last_edited && ` · ${formatDate(item.last_edited)}`}
-                        {item.type === "page" && <span className="text-blue-500 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">Click to view</span>}
+                        {item.type === "database" ? "Database" : "Page"}{" "}
+                        {item.last_edited &&
+                          ` · ${formatDate(item.last_edited)}`}
+                        {item.type === "page" && (
+                          <span className="text-blue-500 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            Click to view
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
                     {item.url && (
-                      <a href={item.url} target="_blank" rel="noopener noreferrer"
-                        className="p-2 text-slate-500 hover:text-white transition-colors" title="Open in Notion"
-                        onClick={(e) => e.stopPropagation()}>
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 text-slate-500 hover:text-white transition-colors"
+                        title="Open in Notion"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <ExternalLink className="h-4 w-4" />
                       </a>
                     )}
@@ -215,82 +269,159 @@ export function Explorer() {
       )}
 
       {selectedPage && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setSelectedPage(null)}>
-          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 border-b border-slate-800">
-              <div className="min-w-0 flex-1">
-                <h3 className="text-lg font-bold text-white truncate">{selectedPage.title}</h3>
-                <p className="text-xs text-slate-500 mt-0.5">{selectedPage.blocks?.length || 0} blocks</p>
+        <>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop-dismiss, viewer has its own heading */}
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: modal backdrop-dismiss, viewer has its own heading */}
+          <div
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedPage(null)}
+          >
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: click-stop propagation container, not interactive */}
+            {/* biome-ignore lint/a11y/useKeyWithClickEvents: click-stop propagation container, not interactive */}
+            <div
+              className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-5 border-b border-slate-800">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-bold text-white truncate">
+                    {selectedPage.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {selectedPage.blocks?.length || 0} blocks
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPageView("blocks")}
+                    className={`px-3 py-1.5 text-xs rounded ${pageView === "blocks" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white"}`}
+                  >
+                    Blocks
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedPage) loadMarkdown(selectedPage.id);
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded ${pageView === "markdown" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white"}`}
+                  >
+                    Markdown
+                  </button>
+                  {selectedPage.url && (
+                    <a
+                      href={selectedPage.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors ml-1"
+                      title="Open in Notion"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPage(null)}
+                    className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setPageView("blocks")} className={`px-3 py-1.5 text-xs rounded ${pageView === "blocks" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white"}`}>Blocks</button>
-                <button onClick={() => { if (selectedPage) loadMarkdown(selectedPage.id); }} className={`px-3 py-1.5 text-xs rounded ${pageView === "markdown" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white"}`}>Markdown</button>
-                {selectedPage.url && (
-                  <a href={selectedPage.url} target="_blank" rel="noopener noreferrer"
-                    className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors ml-1" title="Open in Notion">
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                )}
-                <button onClick={() => setSelectedPage(null)} className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-5">
-              {pageView === "blocks" ? (
-                pageLoading ? (
-                  <div className="text-center py-8 text-slate-500">Loading content...</div>
-                ) : selectedPage.blocks && selectedPage.blocks.length > 0 ? (
-                  <div className="space-y-2">
-                    {selectedPage.blocks.map((block, i) => (
-                      <div key={i} className="text-sm text-slate-300 leading-relaxed group flex gap-2">
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 pt-1">
-                          <button onClick={() => {}} className="text-slate-600 hover:text-slate-300 text-[10px] px-1" title="Delete block">x</button>
+              <div className="flex-1 overflow-y-auto p-5">
+                {pageView === "blocks" ? (
+                  pageLoading ? (
+                    <div className="text-center py-8 text-slate-500">
+                      Loading content...
+                    </div>
+                  ) : selectedPage.blocks && selectedPage.blocks.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedPage.blocks.map((block) => (
+                        <div
+                          key={`${block.type}-${block.text.slice(0, 24)}`}
+                          className="text-sm text-slate-300 leading-relaxed group flex gap-2"
+                        >
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {}}
+                              className="text-slate-600 hover:text-slate-300 text-[10px] px-1"
+                              title="Delete block"
+                            >
+                              x
+                            </button>
+                          </div>
+                          <div className="flex-1">
+                            {block.type === "heading_1" ? (
+                              <h1 className="text-xl font-bold text-white mt-4 mb-2">
+                                {block.text}
+                              </h1>
+                            ) : block.type === "heading_2" ? (
+                              <h2 className="text-lg font-semibold text-white mt-3 mb-1">
+                                {block.text}
+                              </h2>
+                            ) : block.type === "heading_3" ? (
+                              <h3 className="text-base font-medium text-white mt-2 mb-1">
+                                {block.text}
+                              </h3>
+                            ) : block.type === "bulleted_list_item" ||
+                              block.type === "numbered_list_item" ? (
+                              <li className="ml-4 text-slate-300">
+                                {block.text}
+                              </li>
+                            ) : block.type === "to_do" ? (
+                              <div className="flex items-center gap-2 text-slate-300">
+                                <span className="text-slate-600">[ ]</span>{" "}
+                                {block.text}
+                              </div>
+                            ) : block.type === "divider" ? (
+                              <hr className="border-slate-800 my-3" />
+                            ) : (
+                              <p className="text-slate-300">{block.text}</p>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          {block.type === "heading_1" ? <h1 className="text-xl font-bold text-white mt-4 mb-2">{block.text}</h1>
-                          : block.type === "heading_2" ? <h2 className="text-lg font-semibold text-white mt-3 mb-1">{block.text}</h2>
-                          : block.type === "heading_3" ? <h3 className="text-base font-medium text-white mt-2 mb-1">{block.text}</h3>
-                          : block.type === "bulleted_list_item" || block.type === "numbered_list_item" ? <li className="ml-4 text-slate-300">{block.text}</li>
-                          : block.type === "to_do" ? <div className="flex items-center gap-2 text-slate-300"><span className="text-slate-600">[ ]</span> {block.text}</div>
-                          : block.type === "divider" ? <hr className="border-slate-800 my-3" />
-                          : <p className="text-slate-300">{block.text}</p>}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      No block content available.
+                    </div>
+                  )
+                ) : markdownLoading ? (
+                  <div className="text-center py-8 text-slate-500">
+                    Loading markdown...
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-slate-500">No block content available.</div>
-                )
-              ) : markdownLoading ? (
-                <div className="text-center py-8 text-slate-500">Loading markdown...</div>
-              ) : (
-                <div className="space-y-3">
-                  <textarea
-                    value={markdownText}
-                    onChange={(e) => setMarkdownText(e.target.value)}
-                    className="w-full h-[50vh] bg-slate-950 border border-slate-800 rounded-lg p-4 text-sm text-slate-300 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
-                  />
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => loadMarkdown(selectedPage.id)}
-                      className="px-3 py-1.5 text-xs rounded bg-slate-800 text-slate-400 hover:text-white"
-                    >
-                      Reload
-                    </button>
-                    <button
-                      onClick={() => saveMarkdown(selectedPage.id)}
-                      disabled={markdownSaving}
-                      className="px-4 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-30"
-                    >
-                      {markdownSaving ? "Saving..." : "Save to Notion"}
-                    </button>
+                  <div className="space-y-3">
+                    <textarea
+                      value={markdownText}
+                      onChange={(e) => setMarkdownText(e.target.value)}
+                      className="w-full h-[50vh] bg-slate-950 border border-slate-800 rounded-lg p-4 text-sm text-slate-300 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => loadMarkdown(selectedPage.id)}
+                        className="px-3 py-1.5 text-xs rounded bg-slate-800 text-slate-400 hover:text-white"
+                      >
+                        Reload
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveMarkdown(selectedPage.id)}
+                        disabled={markdownSaving}
+                        className="px-4 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-30"
+                      >
+                        {markdownSaving ? "Saving..." : "Save to Notion"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

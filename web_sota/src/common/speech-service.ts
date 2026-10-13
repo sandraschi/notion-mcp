@@ -38,23 +38,35 @@ export async function speak(text: string): Promise<TtsSession> {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
-        const cancel = () => { audio.pause(); audio.currentTime = 0; URL.revokeObjectURL(url); };
+        const cancel = () => {
+          audio.pause();
+          audio.currentTime = 0;
+          URL.revokeObjectURL(url);
+        };
         const done = new Promise<void>((resolve) => {
-          audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-          audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+          audio.onended = () => {
+            URL.revokeObjectURL(url);
+            resolve();
+          };
+          audio.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve();
+          };
         });
         audio.play().catch(() => {});
         return { cancel, done };
       }
-    } catch {
-    }
+    } catch {}
   }
-  if (typeof window === "undefined" || !window.speechSynthesis) return { cancel: () => {}, done: Promise.resolve() };
+  if (typeof window === "undefined" || !window.speechSynthesis)
+    return { cancel: () => {}, done: Promise.resolve() };
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(plain);
   u.rate = 1;
   u.pitch = 1;
-  const done = new Promise<void>((resolve) => { u.onend = () => resolve(); });
+  const done = new Promise<void>((resolve) => {
+    u.onend = () => resolve();
+  });
   window.speechSynthesis.speak(u);
   return { cancel: () => window.speechSynthesis.cancel(), done };
 }
@@ -89,14 +101,19 @@ declare global {
   }
 }
 
-const _Recognition = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+const _Recognition =
+  typeof window !== "undefined" &&
+  (window.SpeechRecognition || window.webkitSpeechRecognition);
 
 export interface SttSession {
   start: () => void;
   stop: () => void;
 }
 
-export function createStt(onResult: (transcript: string, isFinal: boolean) => void, onEnd: () => void): SttSession {
+export function createStt(
+  onResult: (transcript: string, isFinal: boolean) => void,
+  onEnd: () => void,
+): SttSession {
   if (!_Recognition) return { start: () => {}, stop: () => {} };
   const recognition = new _Recognition() as SpeechRecognition;
   recognition.continuous = true;
@@ -112,11 +129,27 @@ export function createStt(onResult: (transcript: string, isFinal: boolean) => vo
   recognition.onend = onEnd;
   recognition.onerror = () => onEnd();
   return {
-    start: () => { try { recognition.start(); } catch { onEnd(); } },
-    stop: () => { try { recognition.abort(); } catch {} onEnd(); },
+    start: () => {
+      try {
+        recognition.start();
+      } catch {
+        onEnd();
+      }
+    },
+    stop: () => {
+      try {
+        recognition.abort();
+      } catch {}
+      onEnd();
+    },
   };
 }
 
 function stripMarkdown(md: string): string {
-  return md.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[*_`#~]/g, "").replace(/```[\s\S]*?```/g, " ").replace(/\n+/g, " ").trim();
+  return md
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[*_`#~]/g, "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/\n+/g, " ")
+    .trim();
 }

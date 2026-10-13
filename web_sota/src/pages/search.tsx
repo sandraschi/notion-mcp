@@ -1,25 +1,34 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   BookOpen,
   ExternalLink,
   Filter,
   Search as SearchIcon,
 } from "lucide-react";
-import { API_BASE } from "@/lib/api";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { API_BASE } from "@/lib/api";
+
+interface SearchResult {
+  id?: string;
+  title?: string;
+  content?: string;
+  url?: string;
+  type?: string;
+  _distance?: number;
+}
 
 export function SemanticSearch() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(API_BASE + "/api/search", {
+      const res = await fetch(`${API_BASE}/api/search`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
@@ -83,9 +92,11 @@ export function SemanticSearch() {
           </div>
         )}
 
-        {results.map((result, i) => (
+        {results.map((result) => (
           <Card
-            key={i}
+            key={
+              result.id ?? result.title ?? JSON.stringify(result).slice(0, 32)
+            }
             className="border-slate-800 bg-slate-950/50 hover:bg-slate-900/50 transition-colors group"
           >
             <CardHeader className="flex flex-row items-start justify-between pb-2">

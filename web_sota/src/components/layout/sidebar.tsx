@@ -1,4 +1,3 @@
-import { cn } from "@/common/utils";
 import {
   Activity,
   ChevronLeft,
@@ -14,6 +13,7 @@ import {
   Settings,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/common/utils";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -51,6 +51,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
         )}
         <button
+          type="button"
           onClick={onToggle}
           className="rounded-md p-1.5 text-slate-400 hover:bg-slate-900 hover:text-white"
         >

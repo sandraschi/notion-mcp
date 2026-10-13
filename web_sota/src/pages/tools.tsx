@@ -1,3 +1,5 @@
+import { AlertCircle, Loader2, Play, Wrench } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -6,9 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AlertCircle, Loader2, Play, Wrench } from "lucide-react";
 import { API_BASE } from "@/lib/api";
-import { useEffect, useState } from "react";
 
 export function Tools() {
   const [tools, setTools] = useState<string[]>([]);
@@ -17,7 +17,7 @@ export function Tools() {
   useEffect(() => {
     const fetchTools = async () => {
       try {
-        const response = await fetch(API_BASE + "/api/tools");
+        const response = await fetch(`${API_BASE}/api/tools`);
         const data = await response.json();
         setTools(data.tools || []);
       } catch (error) {

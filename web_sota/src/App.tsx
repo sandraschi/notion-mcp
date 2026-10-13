@@ -1,20 +1,20 @@
-import { AppLayout } from "@/components/layout/app-layout";
-import Logging from "@/pages/Logging";
-import { Chat } from "@/pages/chat";
-import { Dashboard } from "@/pages/dashboard";
-import { DataMigration } from "@/pages/data";
-import { Explorer } from "@/pages/explorer";
-import { Help } from "@/pages/help";
-import { Plugins } from "@/pages/plugins";
-import { Settings } from "@/pages/settings";
-import { Status } from "@/pages/status";
-import { Tools } from "@/pages/tools";
 import {
   Navigate,
   Route,
   BrowserRouter as Router,
   Routes,
 } from "react-router-dom";
+import { AppLayout } from "@/components/layout/app-layout";
+import { Chat } from "@/pages/chat";
+import { Dashboard } from "@/pages/dashboard";
+import { DataMigration } from "@/pages/data";
+import { Explorer } from "@/pages/explorer";
+import { Help } from "@/pages/help";
+import Logging from "@/pages/Logging";
+import { Plugins } from "@/pages/plugins";
+import { Settings } from "@/pages/settings";
+import { Status } from "@/pages/status";
+import { Tools } from "@/pages/tools";
 import { SemanticSearch } from "./pages/search";
 
 function App() {

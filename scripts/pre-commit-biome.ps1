@@ -1,15 +1,16 @@
 #Requires -Version 5.1
-# Fleet pre-commit biome gate: run `biome ci` in each configured web root.
-# Skips roots without biome.json (nothing to enforce there).
+# Fleet pre-commit biome gate: run the repo's own `biome:ci` script in each
+# configured web root (uses the local node_modules binary via npm, never npx).
 $repo = Split-Path -Parent $PSScriptRoot
 $roots = @('web_sota', 'webapp', 'webapp/frontend', 'web')
 $checked = 0
 foreach ($r in $roots) {
   $dir = Join-Path $repo $r
-  if ((Test-Path -LiteralPath $dir) -and (Test-Path -LiteralPath (Join-Path $dir 'biome.json'))) {
+  $pkg = Join-Path $dir 'package.json'
+  if ((Test-Path -LiteralPath $dir) -and (Test-Path -LiteralPath $pkg)) {
     $checked += 1
     Push-Location $dir
-    & npx '@biomejs/biome' ci .
+    npm run biome:ci
     $code = $LASTEXITCODE
     Pop-Location
     if ($code -ne 0) {

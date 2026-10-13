@@ -1,11 +1,4 @@
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   ArrowRight,
   CheckCircle2,
   Clock,
@@ -15,8 +8,15 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { API_BASE } from "@/lib/api";
 import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { API_BASE } from "@/lib/api";
 
 interface ExportItem {
   id: string;
@@ -33,7 +33,7 @@ export function DataMigration() {
   const handleExport = async (format: string) => {
     setExporting(true);
     try {
-      const res = await fetch(API_BASE + `/api/export?format=${format}`);
+      const res = await fetch(`${API_BASE}/api/export?format=${format}`);
       const data = await res.json();
       if (data.success) {
         // Refresh list or add new one
@@ -106,6 +106,7 @@ export function DataMigration() {
           </CardHeader>
           <CardContent className="space-y-4">
             <button
+              type="button"
               disabled={exporting}
               onClick={() => handleExport("json")}
               className="w-full flex items-center justify-between p-3 bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors group"
@@ -124,6 +125,7 @@ export function DataMigration() {
               <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-white transition-all transform group-hover:translate-x-1" />
             </button>
             <button
+              type="button"
               disabled={exporting}
               onClick={() => handleExport("md")}
               className="w-full flex items-center justify-between p-3 bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors group"
@@ -191,12 +193,14 @@ export function DataMigration() {
                     </td>
                     <td className="px-4 py-3 text-right space-x-2">
                       <button
+                        type="button"
                         title="Download Backup"
                         className="text-slate-500 hover:text-white"
                       >
                         <Download className="h-4 w-4" />
                       </button>
                       <button
+                        type="button"
                         title="Delete Export"
                         className="text-slate-500 hover:text-red-400"
                       >
