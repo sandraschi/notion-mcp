@@ -33,7 +33,7 @@ class TestCapabilities:
         r = client.get("/api/capabilities")
         assert r.status_code == 200
         body = r.json()
-        assert body["tool_count"] == 40
+        assert body["tool_count"] == 41
         assert "search_notion_knowledge" in body["tools"]
         assert "server_help" in body["tools"]
         assert "shutdown_server" in body["tools"]
@@ -41,7 +41,7 @@ class TestCapabilities:
     def test_diagnostics(self):
         r = client.get("/api/v1/diagnostics")
         assert r.status_code == 200
-        assert r.json()["tool_count"] == 40
+        assert r.json()["tool_count"] == 41
 
 
 class TestSkills:

@@ -16,6 +16,7 @@ import collections
 import datetime
 import json
 import os
+import sys
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -26,7 +27,7 @@ import yaml
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from fastmcp.server import create_proxy
 from pydantic import Field
 
@@ -41,6 +42,11 @@ from notion_mcp.rag.orchestrator import RAGOrchestrator
 from notion_mcp.transport import (
     run_server_async,
 )
+
+if sys.stdout is None:  # windowed frozen exe (console=False) has no stdout
+    sys.stdout = open(os.devnull, "w")
+if sys.stderr is None:  # same for stderr; transformers/tqdm probe both
+    sys.stderr = open(os.devnull, "w")
 
 _LOG_BUFFER_MAX = 5000
 _log_buffer: collections.deque[dict] = collections.deque(maxlen=_LOG_BUFFER_MAX)
@@ -1213,6 +1219,67 @@ async def shutdown_server() -> dict[str, Any]:
         os._exit(0)
     loop.call_later(0.5, lambda: os._exit(0))
     return {"success": True, "message": "notion-mcp shutting down in ~500 ms"}
+
+
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
+async def notion_agentic_workflow(
+    goal: str = Field(description="High-level objective in plain language"),
+    ctx: Context = Field(description="MCP request context (sampling + progress)"),
+) -> dict[str, Any]:
+    """Autonomous multi-step Notion workflow via MCP sampling (SEP-1577).
+
+    Grounds the goal with a workspace search, then borrows the client LLM
+    via ctx.sample() to plan concrete tool calls. Sampling stays supported
+    indefinitely (Claude Desktop path); when the host cannot sample, the
+    tool reports so explicitly instead of guessing.
+
+    ## Return Format
+    `{"success": bool, "message": str, "goal": str, "grounding": [...],
+    "plan": str, "sampling": "client-llm"|"unavailable"}`.
+
+    ## Examples
+    `notion_agentic_workflow(goal="triage open meeting notes")`
+    -> `{"success": True, "plan": "1. search_pages... ", ...}`.
+    """
+    initialize_notion_client()
+    assert page_manager is not None, "Notion client failed to initialize"
+    try:
+        grounding = await page_manager.search_pages(query=goal, limit=5)
+    except Exception:
+        logger.exception("Agentic grounding search failed")
+        grounding = []
+    titles = [g.get("properties", {}) for g in grounding]
+    try:
+        sampled = await ctx.sample(
+            messages=[
+                f"Goal: {goal}\nWorkspace hits (properties): {titles}\n"
+                "Plan the concrete notion-mcp tool calls to achieve the goal. "
+                "Prefer search_notion_knowledge, get_page_content, manage_notion_data, "
+                "query_database, export_workspace_data. Reply with a numbered plan only."
+            ],
+            system_prompt="You are a Notion workspace planner. Output numbered tool-call plans, no prose.",
+            temperature=0.2,
+            max_tokens=800,
+        )
+        plan_text = sampled.text if hasattr(sampled, "text") else str(sampled)
+        return {
+            "success": True,
+            "message": "Plan ready via client sampling.",
+            "goal": goal,
+            "grounding": grounding,
+            "plan": plan_text,
+            "sampling": "client-llm",
+        }
+    except Exception as e:
+        logger.exception("Agentic sampling unavailable")
+        return {
+            "success": False,
+            "error": f"sampling unavailable on this host: {e}",
+            "message": "Retry from a sampling-capable client (Claude Desktop) or break the goal into direct tool calls.",
+            "goal": goal,
+            "grounding": grounding,
+            "sampling": "unavailable",
+        }
 
 
 @mcp.resource("notion://status")

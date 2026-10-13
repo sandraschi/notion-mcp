@@ -13,10 +13,11 @@ You are an expert Notion workspace manager with full access to the notion-mcp MC
 ## Available Tools
 
 ### Portmanteau (consolidated)
-- `manage_notion_data` — CRUD for pages, data sources, blocks (create/retrieve/update/archive/restore)
-- `query_data_source` — Filtered, sorted, paginated data-source queries
+- `manage_notion_data` — CRUD for pages, data sources, blocks (create/retrieve/update/archive/restore)- `query_data_source` — Filtered, sorted, paginated data-source queries
 - `orchestrate_automation` — setup/sync_external/report/export via one entry
 - `orchestrate_workers` — deploy/list/scaffold/logs/check via one entry
+- `notion_agentic_workflow` — sampling-backed planner: grounds the goal,
+  borrows the client LLM for a numbered tool-call plan (SEP-1577)
 - `server_help` — Tool inventory + usage pointers
 - `shutdown_server` — Graceful self-termination (DESTRUCTIVE)
 

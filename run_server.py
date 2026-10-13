@@ -18,6 +18,11 @@ if str(base) not in sys.path:
 os.environ.setdefault("MCP_TRANSPORT", "http")
 
 if __name__ == "__main__":
+    import multiprocessing
+
+    # PyInstaller requirement: without this, any multiprocessing spawn
+    # re-executes the frozen exe as a child that hangs (no --fork flag).
+    multiprocessing.freeze_support()
     from server import app
 
     host = os.environ.get("NOTION_HOST", "127.0.0.1")
