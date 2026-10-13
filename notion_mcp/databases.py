@@ -374,7 +374,7 @@ class DatabaseManager:
     async def update_database_entry(
         self,
         page_id: str,
-        properties: dict[str, Any],
+        properties: dict[str, Any] | None = None,
         content: str | None = None,
         archived: bool | None = None,
     ) -> dict[str, Any]:

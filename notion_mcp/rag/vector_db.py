@@ -35,10 +35,10 @@ class NotionVectorDB:
         # Initialize table if it doesn't exist
         try:
             self.db.create_table(self.table_name, schema=self.schema)
-            logger.info("LanceDB table created", table=self.table_name)
+            logger.info("LanceDB table created: %s", self.table_name)
         except ValueError:
             # Table already exists, which is fine
-            logger.debug("LanceDB table already exists", table=self.table_name)
+            logger.debug("LanceDB table already exists: %s", self.table_name)
 
         self.table = self.db.open_table(self.table_name)
 
@@ -65,7 +65,7 @@ class NotionVectorDB:
         if data:
             # Overwrite for simplicity in this version (or use merge if LanceDB version supports)
             self.table.add(data)
-            logger.info("Chunks embedded and stored", count=len(data))
+            logger.info("Chunks embedded and stored: %d", len(data))
 
     def search(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
         """Perform semantic search."""

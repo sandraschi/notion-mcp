@@ -188,7 +188,9 @@ class PageManager:
         """
         try:
             # Build the page data
-            page_data = {"properties": {"title": {"title": [{"type": "text", "text": {"content": title}}]}}}
+            page_data: dict[str, Any] = {
+                "properties": {"title": {"title": [{"type": "text", "text": {"content": title}}]}}
+            }
 
             # Add parent
             if parent_id:

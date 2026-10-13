@@ -22,7 +22,7 @@ class PluginManager:
         self.plugins = {}
         if not os.path.exists(self.plugins_dir):
             os.makedirs(self.plugins_dir)
-            logger.info("Created plugins directory", path=self.plugins_dir)
+            logger.info("Created plugins directory: %s", self.plugins_dir)
 
     def list_plugins(self) -> list[dict[str, Any]]:
         """List all installed and available plugins."""
@@ -83,6 +83,6 @@ class PluginManager:
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
                 self.plugins[name] = module
-                logger.info("Plugin loaded", plugin=name)
+                logger.info("Plugin loaded: %s", name)
         except Exception as e:
-            logger.error("Failed to load plugin", plugin=name, error=str(e))
+            logger.error("Failed to load plugin %s: %s", name, str(e))
