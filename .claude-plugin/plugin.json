@@ -1,0 +1,1 @@
+{"description": "Notion workspace management MCP server (pages, databases, RAG, workers)", "hooks": "../hooks/hooks.json", "name": "notion-mcp", "version": "1.2.0"}
