@@ -4,6 +4,8 @@ All notable changes to Notion MCP will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
+## [Unreleased] — assfix 2026-10-13 (manifest stdio fix, /health alias, MCP mount + lifespan, shutdown/capabilities/llm endpoints, 40/40 tool docstrings, ruff gates, session injection, new docs; see git log)
+
 ## [1.2.1] — 2026-07-21
 
 ### Security
@@ -151,4 +153,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **1.2.0** (2026-05-25): Real Comments API, AI summary via LLM, Workers management, webhooks, PAT auth, markdown endpoints, API 2026-03-11
 - **1.0.1** (2025-12-29): Cursor compatibility fix with lazy initialization
 - **1.0.0** (2025-12-29): FastMCP 2.14.1 upgrade with structured logging and test harness
-

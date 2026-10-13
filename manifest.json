@@ -1,7 +1,7 @@
 {
   "name": "notion-mcp",
-  "version": "1.0.0",
-  "description": "FastMCP server for comprehensive Notion workspace management - 19 tools for pages, databases, collaboration, and automation",
+  "version": "1.2.0",
+  "description": "FastMCP server for comprehensive Notion workspace management - 40 tools for pages, databases, collaboration, and automation",
   "author": "Sandra",
   "license": "MIT",
   "repository": "https://github.com/sandraschi/notion-mcp",
@@ -35,4 +35,3 @@
     "pyyaml": ">=6.0"
   }
 }
-

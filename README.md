@@ -4,7 +4,7 @@ A bridge between your Notion workspace and the world of AI tools. Browse pages, 
 
 ## What is this?
 
-notion-mcp is a Python server that connects to your Notion workspace and exposes 32 MCP tools for managing pages, databases, comments, and content. It comes with a web dashboard for browsing and searching your workspace visually.
+notion-mcp is a Python server that connects to your Notion workspace and exposes 40 MCP tools for managing pages, databases, comments, and content. It comes with a web dashboard for browsing and searching your workspace visually.
 
 ```
 Just installed? Start here:
@@ -58,6 +58,19 @@ Add to your MCP config:
 }
 ```
 
+## Install (Claude Desktop)
+
+Claude Desktop one-liner (downloads the latest `.mcpb` + installer):
+
+```powershell
+irm https://github.com/sandraschi/notion-mcp/releases/latest/download/install.ps1 | iex
+```
+
+> Available after the first tagged release: run `just mcpb-pack`, then attach
+> `dist/notion-mcp.mcpb`, `dist/notion-mcp-v<ver>.mcpb`, and `install.ps1` to
+> the GitHub release. Other clients (Cursor, VS Code): point at the same
+> bundle or use the `uvx` config in INSTALL.md.
+
 ## Tools at a Glance
 
 - **Pages**: create, update, get content, search, archive
@@ -98,8 +111,20 @@ native/                -- Tauri 2.0 desktop wrapper (NSIS build)
 docs/                  -- Additional documentation
 ```
 
+## Stack
+
+- **Backend:** Python 3.12, FastMCP 3.4 (`>=3.4.4,<4`), FastAPI, Uvicorn,
+  Pydantic v2, structlog, LanceDB (RAG), notion-client 3.x
+- **Frontend (`web_sota/`):** React 19, Vite 7, TypeScript 5.9, TailwindCSS 3,
+  Radix UI, TanStack Query, Lucide icons, `@tauri-apps/api` 2.x
+- **Desktop (`native/`):** Tauri 2.0 (NSIS)
+- **Gates:** Ruff (incl. T20), Pyright, pytest, Biome, tsc
+
 ## Learn More
 
+- [Onboarding](docs/ONBOARDING.md) — first-timer path: token, verify, try-it
+- [Development](docs/DEVELOPMENT.md) — setup, gates, layout, conventions
+- [Tools](docs/TOOLS.md) — all 40 MCP tools + REST endpoints
 - [About Notion](docs/about-notion.md) — history, community, usage stats
 - [Note Apps Comparison](docs/note-apps-comparison.md) — Notion vs Obsidian vs others
 - [llms-full.txt](llms-full.txt) — full technical reference
