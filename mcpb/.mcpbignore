@@ -26,12 +26,6 @@ build/
 *.orig
 *.rej
 
-# Pack build tooling itself -- not runtime code
-mcpb/pack.ps1
-mcpb/verify_pack.py
-pack.ps1
-verify_pack.py
-
 # Non-MCP components detected in this repo
 web_sota/
 native/

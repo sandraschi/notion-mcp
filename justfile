@@ -23,21 +23,13 @@ fmt:
 test:
     Set-Location '{{justfile_directory()}}'; uv run pytest tests/ -q
 
-# Pack the MCPB bundle via the fleet shim (never bare `mcpb pack`)
-mcpb-pack:
-    powershell.exe -NoProfile -File '{{justfile_directory()}}\scripts\mcpb-pack.ps1'
+# Pack the MCPB bundle: fleet recipe (scripts/mcpb-pack.ps1 shim, never bare
+# `mcpb pack`) comes from the scripts/just/fleet.just import above. Do NOT
+# redefine mcpb-pack/cua-* here - just errors on duplicate recipes.
 
 # Playwright e2e (backend + frontend webServers, chromium headless shell)
 e2e:
     Set-Location '{{justfile_directory()}}\web_sota'; bun run test:e2e
-
-# CUA webapp test (pre-Tauri browser walk: stack start + title-matching nav)
-cua-webapp-test:
-    powershell.exe -NoProfile -File '{{justfile_directory()}}\scripts\just\cua-webapp-test.ps1'
-
-# CUA NSIS test (install -> launch -> nav walk -> uninstall; needs installer)
-cua-nsis-test:
-    powershell.exe -NoProfile -File '{{justfile_directory()}}\scripts\just\cua-nsis-test.ps1'
 
 # Biome lint frontend
 lint-web:

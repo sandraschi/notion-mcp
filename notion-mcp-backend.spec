@@ -53,16 +53,29 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["tkinter", "matplotlib", "pandas", "scipy", "torch", "tensorflow"],
+    # NOTE (2026-10-13): "torch" was listed here and broke the frozen exe
+    # (sentence_transformers imports it unconditionally). Only exclude GUI
+    # toolkits that are provably unimported.
+    # NOTE (2026-10-13): "torch" and "scipy" were listed here and broke the
+    # frozen exe (sentence_transformers imports torch unconditionally;
+    # sklearn, pulled by sentence_transformers.util.similarity, needs scipy).
+    # Only exclude GUI toolkits that are provably unimported.
+    excludes=["tkinter", "matplotlib", "pandas", "tensorflow"],
     noarchive=True,
     optimize=0,
 )
-# Strip .dist-info but preserve metadata for packages that need it at runtime
-_keep_dist = ['fastmcp-', 'mcp-', 'prefab_ui-', 'opentelemetry-', 'email_validator-']
-_saved = [e for e in a.datas if isinstance(e, tuple) and any(k in str(e[0]) for k in _keep_dist) and '.dist-info' in str(e[0])]
-for _list in [a.datas, a.binaries, a.zipfiles, a.scripts]:
-    _list[:] = [e for e in _list if not (isinstance(e, tuple) and '.dist-info' in str(e[0]))]
-a.datas.extend(_saved)
+# NOTE (2026-10-13): an earlier revision stripped ALL .dist-info except a
+# _keep_dist allowlist. That broke the frozen exe three times over (opentelemetry
+# entry_points -> StopIteration; lancedb/tqdm metadata -> PackageNotFoundError),
+# because modern deps query importlib.metadata at import time. The allowlist is
+# unmaintainable whack-a-mole (transformers alone can demand dozens). Keep ALL
+# metadata: correctness beats a few MB of bundle size. The list below documents
+# the known-sensitive packages for reviewers; it no longer gates anything.
+_keep_dist = ['fastmcp-', 'mcp-', 'prefab-ui-', 'prefab_ui-', 'opentelemetry-', 'opentelemetry_', 'email-validator-', 'email_validator-', 'lancedb-', 'lancedb_']
+def _dist_name(path):
+    return str(path).replace('_', '-').lower()
+# _saved intentionally unused now (kept for audit trail of the allowlist era).
+_saved = [e for e in a.datas if isinstance(e, tuple) and any(k in _dist_name(e[0]) for k in _keep_dist) and '.dist-info' in str(e[0])]
 pyz = PYZ(a.pure)
 
 exe = EXE(
