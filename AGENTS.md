@@ -32,3 +32,17 @@ FastMCP 3.1 server for Notion workspace management and RAG.
 uv run pytest tests/ -q
 just dev
 ```
+
+## HTTP Daemon + Stdio Proxy
+
+- **Daemon port:** backend `10811` (frontend `10810`); liveness `GET /health`
+  (alias of `/api/health`); orderly restart via `POST /api/shutdown`.
+- **Transports:** stdio default (`python -m notion_mcp`, Claude Desktop);
+  HTTP via `server.py --http --port 10811` (dashboard backend).
+- **MCP mount:** `mcp.http_app(path="/")` mounted at `/mcp` on the FastAPI
+  `app`; parent `app_lifespan` enters the sub-app router lifespan so the
+  FastMCP session manager starts. Do not revert to bare `mcp.http_app`.
+- **State:** LanceDB index under `.lancedb/` (repo root) + `web_sota/.lancedb`;
+  token in gitignored `exports/notion_token.txt` (or `NOTION_TOKEN` env).
+- **No NSSM service.** Known gap: `web_sota/start.ps1` does not clear zombie
+  port holders before bind — restart manually if the port is held.

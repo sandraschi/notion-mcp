@@ -6,13 +6,15 @@
   "author": { "name": "sandraschi" },
   "server": {
     "type": "python",
-    "entry_point": "run_server.py",
+    "entry_point": "notion_mcp/__main__.py",
     "mcp_config": {
-      "command": "uv",
-      "args": ["run","--directory","${PWD}","run_server.py"],
+      "command": "python",
+      "args": ["-m", "notion_mcp"],
+      "cwd": "${__dirname}",
       "env": {
-        "PYTHONPATH": "${PWD}/src",
-        "PYTHONUNBUFFERED": "1"
+        "PYTHONPATH": "${__dirname}",
+        "PYTHONUNBUFFERED": "1",
+        "MCP_TRANSPORT": "stdio"
       }
     }
   },

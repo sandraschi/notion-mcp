@@ -2,7 +2,10 @@ name: CI
 
 on:
   push:
+    branches: [main, master]
     tags: ["v*"]
+  pull_request:
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
@@ -28,5 +31,36 @@ jobs:
       - name: Lint with Ruff
         run: uv run ruff check .
 
+      - name: Check formatting with Ruff
+        run: uv run ruff format --check server.py run_server.py notion_mcp/ scripts/ tests/ mcpb/ web_sota/backend/
+
+      - name: Typecheck with Pyright
+        run: uv run pyright notion_mcp/ server.py
+
       - name: Test with pytest
         run: uv run --group dev pytest -x --tb=short -k "not slow"
+
+  webapp:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: web_sota
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web_sota/package-lock.json
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Lint frontend with Biome
+        run: npm run biome:ci
+
+      - name: Typecheck frontend
+        run: npx tsc --noEmit
