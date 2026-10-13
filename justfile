@@ -15,9 +15,9 @@ lint:
 fix:
     Set-Location '{{justfile_directory()}}'; uv run ruff check . --fix --unsafe-fixes; uv run ruff format .
 
-# Check formatting (CI gate, no writes)
+# Check formatting (CI gate, no writes) - code only, never vendored docs
 fmt:
-    Set-Location '{{justfile_directory()}}'; uv run ruff format --check .
+    Set-Location '{{justfile_directory()}}'; uv run ruff format --check server.py run_server.py notion_mcp/ scripts/ tests/ mcpb/ web_sota/backend/
 
 # Run test suite
 test:
