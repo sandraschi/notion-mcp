@@ -29,7 +29,12 @@ export function Skills() {
   return (
     <div className="space-y-6" data-testid="skills-page">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">Skills</h2>
+        <h2
+          data-testid="skills-title"
+          className="text-2xl font-bold tracking-tight text-white"
+        >
+          Skills
+        </h2>
         <p className="text-slate-300">
           Domain workflows served over MCP (`skill://`) and the Chat page
         </p>
@@ -50,7 +55,10 @@ export function Skills() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <div
+          data-testid="skills-grid"
+          className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
+        >
           {skills.map((s) => (
             <Card key={s.name} className="border-slate-800 bg-slate-950/50">
               <CardHeader className="pb-2">

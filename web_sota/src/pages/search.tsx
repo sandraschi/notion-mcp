@@ -60,6 +60,7 @@ export function SemanticSearch() {
         <div className="relative flex-1">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
           <Input
+            data-testid="search-input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -68,6 +69,7 @@ export function SemanticSearch() {
           />
         </div>
         <Button
+          data-testid="search-submit"
           onClick={handleSearch}
           disabled={loading}
           className="bg-blue-600 hover:bg-blue-700"

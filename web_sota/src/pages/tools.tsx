@@ -32,7 +32,10 @@ export function Tools() {
   return (
     <div className="space-y-6" data-testid="tools-page">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">
+        <h2
+          data-testid="tools-title"
+          className="text-2xl font-bold tracking-tight text-white"
+        >
           Notion MCP Tools
         </h2>
         <p className="text-slate-300">
@@ -40,7 +43,10 @@ export function Tools() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div
+        data-testid="tools-grid"
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+      >
         {loading ? (
           <div className="col-span-full flex items-center justify-center p-12">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />

@@ -70,13 +70,19 @@ export function Status() {
   return (
     <div className="space-y-6" data-testid="status-page">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">
+        <h2
+          data-testid="status-title"
+          className="text-2xl font-bold tracking-tight text-white"
+        >
           System Status
         </h2>
         <p className="text-slate-300">Backend, API, and LLM connectivity</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div
+        data-testid="status-kpis"
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+      >
         <Card className="border-slate-800 bg-slate-950/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-slate-200">

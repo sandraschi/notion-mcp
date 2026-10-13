@@ -48,7 +48,10 @@ export function Plugins() {
   return (
     <div className="space-y-8" data-testid="plugins-page">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">
+        <h2
+          data-testid="plugins-title"
+          className="text-2xl font-bold tracking-tight text-white"
+        >
           Plugin Registry
         </h2>
         <p className="text-slate-300">
@@ -113,6 +116,7 @@ export function Plugins() {
                   </div>
                   <button
                     type="button"
+                    data-testid={`plugin-install-${plugin.id}`}
                     onClick={() => installPlugin(plugin.id)}
                     className="text-xs font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1"
                   >
