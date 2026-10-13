@@ -14,6 +14,7 @@ Status: Production-Ready (SOTA 2026)
 import asyncio
 import collections
 import datetime
+import json
 import os
 import time
 from contextlib import asynccontextmanager
@@ -24,6 +25,7 @@ import structlog
 import yaml
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from fastmcp import FastMCP
 from fastmcp.server import create_proxy
 from pydantic import Field
@@ -82,6 +84,14 @@ structlog.configure(
 )
 
 logger = structlog.get_logger(__name__)
+
+
+def _error_response(message: str, error: Exception, user_message: str = "", **context: Any) -> dict[str, Any]:
+    """Shared error path (TOOL_DESIGN_STANDARDS §7.1 Pattern 3): logs with
+    traceback via logger.exception, returns a dialogic error dict. Use in
+    every except block instead of bare logger.error + hand-built dicts."""
+    logger.exception(message, error=str(error), **context)
+    return {"success": False, "error": str(error), "message": user_message or message}
 
 
 # Load configuration with Austrian context
@@ -167,6 +177,14 @@ if MCP_BRIDGE_URLS:
         url = url.strip()
         if url:
             mcp.add_provider(create_proxy(url))
+
+# Domain skills served over the MCP protocol (not just REST /api/skills)
+try:
+    from fastmcp.server.providers.skills import SkillsDirectoryProvider
+
+    mcp.add_provider(SkillsDirectoryProvider(roots=Path(__file__).parent / "notion_mcp" / "skills"))
+except Exception:
+    logger.exception("Failed to register SkillsDirectoryProvider")
 
 # Initialize RAG Orchestrator for knowledge management
 rag = RAGOrchestrator()
@@ -680,7 +698,7 @@ async def llm_onboarding():
 
 
 @app.post("/api/llm/chat")
-async def llm_chat(messages: list[dict[str, Any]] = Body(...)):
+async def llm_chat(messages: list[dict[str, Any]] = Body(..., embed=True)):
     """Backend chat proxy (OpenAI-style messages) — the ONLY path the Chat
     page should use. Keys never leave the server. Tries local Ollama first;
     DECLARED FALLBACK: returns RAG context with a stub reply and
@@ -732,6 +750,67 @@ async def llm_chat(messages: list[dict[str, Any]] = Body(...)):
         "model": None,
         "declared_fallback": True,
     }
+
+
+@app.post("/api/llm/chat/stream")
+async def llm_chat_stream(messages: list[dict[str, Any]] = Body(..., embed=True)):
+    """SSE token stream for the Chat page (chat_skills_prefab_standard
+    1.10). Events: `data: {"token": str}` chunks, then `data: [DONE]`.
+    Without a reachable Ollama, emits one `{"reply", "declared_fallback"}`
+    event (same declared contract as POST /api/llm/chat).
+
+    ## Return Format
+    `text/event-stream` of `data: {...}` lines ending with `data: [DONE]`.
+    """
+    user_text = ""
+    for m in reversed(messages or []):
+        if m.get("role") == "user":
+            content = m.get("content", "")
+            user_text = content if isinstance(content, str) else str(content)
+            break
+    try:
+        context = await rag.semantic_search(user_text or "", limit=3)
+    except Exception:
+        logger.exception("RAG context build failed for llm_chat_stream")
+        context = []
+
+    async def events():
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                tags = await client.get("http://localhost:11434/api/tags")
+                model_names = [m["name"] for m in tags.json().get("models", [])] if tags.status_code == 200 else []
+                if model_names:
+                    prompt = (
+                        "Context from Notion:\n"
+                        + "\n".join(f"Source: {c.get('title', '')}\nContent: {c.get('content', '')}" for c in context)
+                        + f"\n\nUser Question: {user_text}\n\nAnswer based on the context."
+                    )
+                    async with client.stream(
+                        "POST",
+                        "http://localhost:11434/api/generate",
+                        json={"model": model_names[0], "prompt": prompt, "stream": True},
+                    ) as resp:
+                        if resp.status_code == 200:
+                            async for line in resp.aiter_lines():
+                                if not line.strip():
+                                    continue
+                                try:
+                                    chunk = json.loads(line)
+                                except ValueError:
+                                    continue
+                                token = chunk.get("response", "")
+                                if token:
+                                    yield f"data: {json.dumps({'token': token})}\n\n"
+                            yield "data: [DONE]\n\n"
+                            return
+        except Exception:
+            logger.exception("Local LLM stream failed, using declared fallback")
+        yield f"data: {json.dumps({'reply': 'RAG Context provided. Local LLM invocation would happen here.', 'declared_fallback': True})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(events(), media_type="text/event-stream")
 
 
 @app.post("/api/search")
@@ -845,18 +924,20 @@ def initialize_notion_client():
             message="Austrian efficiency activated",
         )
     except Exception as e:
-        logger.error("Failed to initialize Notion client", error=str(e))
+        logger.exception("Failed to initialize Notion client", error=str(e))
         raise
 
 
 _READ_ONLY = {"readonly": True}
 _MUTATING = {}
 _DESTRUCTIVE = {}
+# All tools return JSON objects (dialogic dicts); declared once, shared.
+_OUT_OBJECT = {"type": "object"}
 
 # 🎛️ SOTA Portmanteau Toolsets (Consolidated Implementation)
 
 
-@mcp.tool(annotations=_DESTRUCTIVE)
+@mcp.tool(annotations=_DESTRUCTIVE, output_schema=_OUT_OBJECT)
 async def manage_notion_data(
     operation: str = Field(description="CRUD operation: create, retrieve, update, archive, restore"),
     entity_type: str = Field(description="Entity type: page, data_source, block"),
@@ -969,11 +1050,11 @@ async def manage_notion_data(
         return {"success": False, "error": f"Unknown operation: {operation}"}
 
     except Exception as e:
-        logger.error(f"manage_notion_data failed ({operation} {entity_type})", error=str(e))
+        logger.exception(f"manage_notion_data failed ({operation} {entity_type})", error=str(e))
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
 async def query_data_source(
     data_source_id: str = Field(description="Data source ID to query"),
     filter: dict[str, Any] | None = Field(default=None, description="Query filter"),
@@ -1012,7 +1093,7 @@ async def query_data_source(
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
 async def search_notion_knowledge(
     query: str = Field(description="Search query (natural language)"),
     mode: str = Field(
@@ -1054,7 +1135,7 @@ async def search_notion_knowledge(
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def sync_rag_index(
     data_source_ids: list[str] | None = Field(
         default=None,
@@ -1082,7 +1163,7 @@ async def sync_rag_index(
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
 async def server_help() -> dict[str, Any]:
     """Show server capabilities, tool inventory, and usage pointers.
 
@@ -1115,7 +1196,7 @@ async def server_help() -> dict[str, Any]:
     }
 
 
-@mcp.tool(annotations=_DESTRUCTIVE)
+@mcp.tool(annotations=_DESTRUCTIVE, output_schema=_OUT_OBJECT)
 async def shutdown_server() -> dict[str, Any]:
     """Gracefully shut down the server process (orderly self-termination).
 
@@ -1163,7 +1244,7 @@ async def notion_quickstart() -> str:
 # Note: Keeping these for backward compatibility but marking as secondary
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def create_page(
     title: str = Field(description="Page title (supports German characters: ä, ö, ü, ß)"),
     content: str = Field(default="", description="Page content in Notion blocks format or plain text"),
@@ -1203,7 +1284,7 @@ async def create_page(
             "message": f"Page '{title}' created with Austrian efficiency! ✅",
         }
     except Exception as e:
-        logger.error("Failed to create page", page_title=title, error=str(e))
+        logger.exception("Failed to create page", page_title=title, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -1211,7 +1292,7 @@ async def create_page(
         }
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def update_page(
     page_id: str = Field(description="Page ID to update"),
     title: str | None = Field(default=None, description="New page title"),
@@ -1246,7 +1327,7 @@ async def update_page(
             "message": "Page updated with Austrian efficiency! ✅",
         }
     except Exception as e:
-        logger.error("Failed to update page", page_id=page_id, error=str(e))
+        logger.exception("Failed to update page", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -1254,7 +1335,7 @@ async def update_page(
         }
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
 async def get_page_content(
     page_id: str = Field(description="Page ID to retrieve"),
     include_children: bool = Field(default=True, description="Include child blocks"),
@@ -1281,7 +1362,7 @@ async def get_page_content(
             "message": "Page content retrieved with Austrian efficiency! ✅",
         }
     except Exception as e:
-        logger.error("Failed to get page content", page_id=page_id, error=str(e))
+        logger.exception("Failed to get page content", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -1289,7 +1370,7 @@ async def get_page_content(
         }
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
 async def search_pages(
     query: str = Field(description="Search query (natural language)"),
     filter_by_type: str | None = Field(default=None, description="Filter by object type: page, database"),
@@ -1323,7 +1404,7 @@ async def search_pages(
             "message": f"Found {len(results)} results with Austrian efficiency! 🔍",
         }
     except Exception as e:
-        logger.error(f"Search failed for query '{query}': {e}")
+        logger.exception(f"Search failed for query '{query}': {e}")
         return {
             "success": False,
             "error": str(e),
@@ -1331,7 +1412,7 @@ async def search_pages(
         }
 
 
-@mcp.tool(annotations=_DESTRUCTIVE)
+@mcp.tool(annotations=_DESTRUCTIVE, output_schema=_OUT_OBJECT)
 async def archive_page(
     page_id: str = Field(description="Page ID to archive"),
     permanent_delete: bool = Field(default=False, description="Permanently delete instead of archive"),
@@ -1369,7 +1450,7 @@ async def archive_page(
             "message": f"Page {action} with Austrian efficiency! ✅",
         }
     except Exception as e:
-        logger.error("Failed to archive page", page_id=page_id, error=str(e))
+        logger.exception("Failed to archive page", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -1380,7 +1461,7 @@ async def archive_page(
 # 🗄️ Database Operations (6 tools)
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def create_database(
     title: str = Field(description="Database title"),
     parent_id: str = Field(description="Parent page ID where database will be created"),
@@ -1418,7 +1499,7 @@ async def create_database(
             "message": f"Database '{title}' created with Austrian efficiency! 🗄️",
         }
     except Exception as e:
-        logger.error(f"Failed to create database '{title}': {e}")
+        logger.exception(f"Failed to create database '{title}': {e}")
         return {
             "success": False,
             "error": str(e),
@@ -1426,7 +1507,7 @@ async def create_database(
         }
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
 async def query_database(
     database_id: str = Field(description="Database ID to query"),
     filter: dict[str, Any] | None = Field(default=None, description="Query filter conditions"),
@@ -1468,7 +1549,7 @@ async def query_database(
             "message": "Query completed with Austrian efficiency! 🔍",
         }
     except Exception as e:
-        logger.error("Database query failed", database_id=database_id, error=str(e))
+        logger.exception("Database query failed", database_id=database_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -1476,7 +1557,7 @@ async def query_database(
         }
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def create_database_entry(
     database_id: str = Field(description="Database ID to add entry to"),
     properties: dict[str, Any] = Field(description="Entry properties"),
@@ -1511,7 +1592,7 @@ async def create_database_entry(
             "message": "Database entry created with Austrian efficiency! ✅",
         }
     except Exception as e:
-        logger.error(f"Failed to create database entry: {e}")
+        logger.exception(f"Failed to create database entry: {e}")
         return {
             "success": False,
             "error": str(e),
@@ -1519,7 +1600,7 @@ async def create_database_entry(
         }
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def update_database_entry(
     page_id: str = Field(description="Entry page ID to update"),
     properties: dict[str, Any] | None = Field(default=None, description="Updated properties"),
@@ -1550,7 +1631,7 @@ async def update_database_entry(
             "message": "Database entry updated with Austrian efficiency! ✅",
         }
     except Exception as e:
-        logger.error("Failed to update database entry", page_id=page_id, error=str(e))
+        logger.exception("Failed to update database entry", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -1558,7 +1639,7 @@ async def update_database_entry(
         }
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
 async def get_database_schema(
     database_id: str = Field(description="Database ID to analyze"),
     include_statistics: bool = Field(default=False, description="Include usage statistics"),
@@ -1588,7 +1669,7 @@ async def get_database_schema(
             "message": "Database schema retrieved with Austrian efficiency! 📊",
         }
     except Exception as e:
-        logger.error(f"Failed to get database schema {database_id}: {e}")
+        logger.exception(f"Failed to get database schema {database_id}: {e}")
         return {
             "success": False,
             "error": str(e),
@@ -1596,7 +1677,7 @@ async def get_database_schema(
         }
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def bulk_import_data(
     database_id: str = Field(description="Target database ID"),
     data_source: str = Field(description="CSV or JSON data to import"),
@@ -1634,7 +1715,7 @@ async def bulk_import_data(
             "message": f"Imported {result['successful_imports']}/{result['total_records']} records.",
         }
     except Exception as e:
-        logger.error("Bulk import failed", database_id=database_id, error=str(e))
+        logger.exception("Bulk import failed", database_id=database_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -1645,7 +1726,7 @@ async def bulk_import_data(
 # 💬 Collaboration Tools (3 tools)
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def add_comment(
     page_id: str = Field(description="Page or block ID to comment on"),
     content: str = Field(description="Comment content"),
@@ -1677,7 +1758,7 @@ async def add_comment(
             "message": "Comment added with Austrian efficiency! 💬",
         }
     except Exception as e:
-        logger.error("Failed to add comment", page_id=page_id, error=str(e))
+        logger.exception("Failed to add comment", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -1685,7 +1766,7 @@ async def add_comment(
         }
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
 async def get_comments(
     page_id: str = Field(description="Page ID to get comments from"),
     include_resolved: bool = Field(default=False, description="Include resolved comments"),
@@ -1717,7 +1798,7 @@ async def get_comments(
             "message": f"Retrieved {len(results)} comments with Austrian efficiency! 💬",
         }
     except Exception as e:
-        logger.error("Failed to get comments", page_id=page_id, error=str(e))
+        logger.exception("Failed to get comments", page_id=page_id, error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -1725,7 +1806,7 @@ async def get_comments(
         }
 
 
-@mcp.tool(annotations=_READ_ONLY, app=True)
+@mcp.tool(annotations=_READ_ONLY, app=True, output_schema=_OUT_OBJECT)
 async def get_workspace_users(
     include_inactive: bool = Field(default=False, description="Include inactive users"),
     permission_level: str | None = Field(default=None, description="Filter by permission level"),
@@ -1755,7 +1836,7 @@ async def get_workspace_users(
             "message": f"Retrieved {len(results)} users with Austrian efficiency! 👥",
         }
     except Exception as e:
-        logger.error("Failed to get workspace users", error=str(e))
+        logger.exception("Failed to get workspace users", error=str(e))
         return {
             "success": False,
             "error": str(e),
@@ -1766,7 +1847,7 @@ async def get_workspace_users(
 # 🔍 Advanced Features (7 tools)
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def setup_automation(
     trigger_type: str = Field(description="Automation trigger type"),
     conditions: dict[str, Any] = Field(description="Trigger conditions"),
@@ -1792,7 +1873,7 @@ async def setup_automation(
     )
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def sync_external_data(
     external_source: str = Field(description="External data source type"),
     sync_config: dict[str, Any] = Field(description="Sync configuration"),
@@ -1819,7 +1900,7 @@ async def sync_external_data(
     )
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def generate_ai_summary(
     page_id: str = Field(description="Page ID to analyze"),
     summary_type: str = Field(default="comprehensive", description="Summary type"),
@@ -1844,7 +1925,7 @@ async def generate_ai_summary(
     )
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def export_workspace_data(
     scope: str = Field(default="workspace", description="Export scope"),
     format: str = Field(default="json", description="Export format"),
@@ -1867,7 +1948,7 @@ async def export_workspace_data(
     )
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def import_workspace_data(
     source_path: str = Field(description="Local path to Markdown/JSON file"),
     target_parent_id: str = Field(description="Parent Page/Database ID in Notion"),
@@ -1891,7 +1972,7 @@ async def import_workspace_data(
     )
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def orchestrate_automation(
     operation: str = Field(description="Automation operation: setup, sync_external, report, export"),
     config: dict[str, Any] = Field(description="Automation configuration"),
@@ -1922,7 +2003,7 @@ async def orchestrate_automation(
 # 🌐 Webhook Management (2 tools)
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def verify_webhook(
     verification_token: str = Field(description="Verification token from Notion's webhook POST"),
 ) -> dict[str, Any]:
@@ -1939,7 +2020,7 @@ async def verify_webhook(
     return await automation_manager.verify_webhook_subscription(verification_token)
 
 
-@mcp.tool(annotations=_READ_ONLY, app=True)
+@mcp.tool(annotations=_READ_ONLY, app=True, output_schema=_OUT_OBJECT)
 async def list_webhook_events(
     limit: int = Field(default=50, description="Max events to return"),
     event_type: str | None = Field(default=None, description="Filter by event type"),
@@ -1961,7 +2042,7 @@ async def list_webhook_events(
 # 🔧 Notion Workers Management (6 tools)
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def deploy_worker(
     project_dir: str | None = Field(default=None, description="Worker project directory (default: current dir)"),
 ) -> dict[str, Any]:
@@ -1976,7 +2057,7 @@ async def deploy_worker(
     return await notion_workers.deploy_worker(project_dir)
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
 async def list_workers() -> dict[str, Any]:
     """List deployed Notion Workers. Requires ntn CLI.
 
@@ -1989,7 +2070,7 @@ async def list_workers() -> dict[str, Any]:
     return await notion_workers.list_workers()
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def scaffold_worker(
     project_dir: str = Field(description="Directory to scaffold the worker project"),
 ) -> dict[str, Any]:
@@ -2004,7 +2085,7 @@ async def scaffold_worker(
     return await notion_workers.scaffold_worker(project_dir)
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
 async def worker_logs(
     worker_name: str | None = Field(default=None, description="Worker name filter"),
     tail: int = Field(default=50, description="Number of log lines"),
@@ -2020,7 +2101,7 @@ async def worker_logs(
     return await notion_workers.worker_logs(worker_name=worker_name, tail=tail)
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
 async def check_ntn() -> dict[str, Any]:
     """Check if Notion CLI (ntn) is installed.
 
@@ -2033,7 +2114,7 @@ async def check_ntn() -> dict[str, Any]:
     return await notion_workers.check_ntn_version()
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def orchestrate_workers(
     operation: str = Field(description="Worker operation: deploy, list, scaffold, logs, check"),
     project_dir: str | None = Field(default=None, description="Project directory (for deploy/scaffold)"),
@@ -2065,7 +2146,7 @@ async def orchestrate_workers(
 # Block operations
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def append_blocks(
     block_id: str = Field(description="Page or block ID to append children to"),
     children: list[dict[str, Any]] = Field(description="List of block objects to append"),
@@ -2088,7 +2169,7 @@ async def append_blocks(
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def update_block(
     block_id: str = Field(description="Block ID to update"),
     block_type: str = Field(description="Block type (e.g. paragraph, heading_1, to_do)"),
@@ -2116,7 +2197,7 @@ async def update_block(
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool(annotations=_DESTRUCTIVE)
+@mcp.tool(annotations=_DESTRUCTIVE, output_schema=_OUT_OBJECT)
 async def delete_block(
     block_id: str = Field(description="Block ID to archive/delete"),
 ) -> dict[str, Any]:
@@ -2140,7 +2221,7 @@ async def delete_block(
 # Markdown page endpoints
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, output_schema=_OUT_OBJECT)
 async def get_page_markdown(
     page_id: str = Field(description="Page ID to retrieve as markdown"),
 ) -> dict[str, Any]:
@@ -2162,7 +2243,7 @@ async def get_page_markdown(
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def update_page_markdown(
     page_id: str = Field(description="Page ID to update"),
     markdown: str = Field(description="Full markdown content to write to the page"),
@@ -2188,7 +2269,7 @@ async def update_page_markdown(
 # Database schema mutation
 
 
-@mcp.tool(annotations=_MUTATING)
+@mcp.tool(annotations=_MUTATING, output_schema=_OUT_OBJECT)
 async def update_database_schema(
     database_id: str = Field(description="Database ID to update"),
     title: str | None = Field(default=None, description="New database title"),
