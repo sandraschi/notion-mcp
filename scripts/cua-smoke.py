@@ -91,9 +91,9 @@ _CONFIG = load_config()
 BACKEND_PORT = int(cfg("backend_port", 10789))
 BACKEND_URL = f"http://127.0.0.1:{BACKEND_PORT}"
 PRODUCT_NAME = cfg("product_name", "Pywinauto MCP Operator")
-HEALTH_PATH = cfg("health_path", "/api/v1/health")
+HEALTH_PATH = cfg("health_path", "/api/health")
 DIAGNOSTICS_PATH = cfg("diagnostics_path", "/api/v1/diagnostics")
-FEATURE_PATH = cfg("feature_smoke_path", "/api/v1/system/info")
+FEATURE_PATH = cfg("feature_smoke_path", "/api/status")
 REQUEST_LOG_PATH = cfg("request_log_path", "/api/v1/request-log")
 WINDOW_TITLE_RE = cfg("window_title_re", "Pywinauto MCP")
 BRIDGE_OK_TEXT = cfg("bridge_ok_text", "REST bridge reachable")
@@ -128,6 +128,7 @@ def log_warn(msg: str):
 try:
     import pywinauto
     import pywinauto.findwindows
+
     _HAS_PYWAUTO = True
 except ImportError:
     _HAS_PYWAUTO = False
@@ -175,7 +176,11 @@ def cua_find_window(title_re: str = "", retry_seconds: int = 10) -> dict | None:
                 rect = win.rectangle()
                 w = rect.width if isinstance(rect.width, int) else rect.width()
                 h = rect.height if isinstance(rect.height, int) else rect.height()
-                return {"handle": handle, "title": win.window_text(), "rect": {"left": rect.left, "top": rect.top, "width": w, "height": h}}
+                return {
+                    "handle": handle,
+                    "title": win.window_text(),
+                    "rect": {"left": rect.left, "top": rect.top, "width": w, "height": h},
+                }
         except Exception:
             pass
         if time.monotonic() >= deadline:
@@ -215,12 +220,15 @@ def cua_ocr_text(window_handle: int = 0, image_path: str = "") -> str:
     """Run OCR on a window screenshot. Returns text."""
     try:
         import pytesseract
+
         pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
         if image_path and os.path.exists(image_path):
             from PIL import Image
+
             return pytesseract.image_to_string(Image.open(image_path))
         if window_handle:
             from PIL import Image
+
             capture = cua_screenshot(window_handle, f"{image_path or 'capture'}.png")
             if capture and os.path.exists(capture):
                 return pytesseract.image_to_string(Image.open(capture))
@@ -233,6 +241,7 @@ def cua_click(window_handle: int, x: int, y: int):
     """Click at (x,y) relative to window."""
     try:
         import pywinauto.mouse
+
         pywinauto.mouse.click(button="left", coords=(x, y))
     except Exception:
         pass
@@ -246,6 +255,7 @@ def _release_mouse():
     click handler is bound - Escape clears that before the next step."""
     try:
         import ctypes
+
         MOUSEEVENTF_LEFTUP = 0x0004
         MOUSEEVENTF_RIGHTUP = 0x0010
         MOUSEEVENTF_MIDDLEUP = 0x0040
@@ -255,6 +265,7 @@ def _release_mouse():
         pass
     try:
         import ctypes
+
         VK_ESCAPE = 0x1B
         KEYEVENTF_KEYUP = 0x0002
         ctypes.windll.user32.keybd_event(VK_ESCAPE, 0, 0, 0)
@@ -355,6 +366,7 @@ def _foreground_and_maximize(handle: int):
     captured unrelated desktop content (a notes window) instead of the app."""
     try:
         import pywinauto
+
         app = pywinauto.Application(backend="uia").connect(handle=handle)
         w = app.window(handle=handle)
         w.set_focus()
@@ -515,6 +527,7 @@ def _verify_page_ocr(text: str, label: str, expected: str) -> bool:
 def _nav_click_element(win_handle: int, wx: int, wy: int, idx: int, label: str = ""):
     """Click a nav item. Tries title-based UIA matching first, then index, then coordinates."""
     import pywinauto
+
     app = pywinauto.Application(backend="uia").connect(handle=win_handle)
     w = app.window(handle=win_handle)
 
@@ -545,7 +558,7 @@ def _nav_click_element(win_handle: int, wx: int, wy: int, idx: int, label: str =
             return
     except Exception:
         pass
-    # Try Pane (some WebView versions)  
+    # Try Pane (some WebView versions)
     try:
         elements = w.descendants(control_type="Pane")
         nav_elements = [e for e in elements if e.rectangle().left < wx + 200]
@@ -570,7 +583,10 @@ def nav_click_through(output_dir: str):
     _release_mouse()
     _show_automation_warning()
 
-    nav_routes = cfg("nav_routes", [["Dashboard", "Automation Dashboard"], ["Logging", "Logs"], ["Settings", "Settings"], ["Help", "Help"]])
+    nav_routes = cfg(
+        "nav_routes",
+        [["Dashboard", "Automation Dashboard"], ["Logging", "Logs"], ["Settings", "Settings"], ["Help", "Help"]],
+    )
     nav_routes = [(r[0], r[1]) for r in nav_routes if len(r) >= 2]
     win = cua_find_window(WINDOW_TITLE_RE)
     if not win:

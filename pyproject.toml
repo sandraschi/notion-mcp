@@ -91,14 +91,17 @@ warn_unused_configs = true
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+# Vendored third-party docs (AI papers, IDE guides) — not source, never linted.
+exclude = [".windsurf"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "S", "UP", "RUF", "T20"]
 ignore = ["S101", "B008", "S106", "RUF012", "S603", "S607", "S324", "E402", "E501"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["T20", "S101"]
+"tests/**" = ["T20", "S101", "S108"]
 "scripts/**" = ["T20"]
+"scripts/cua-*.py" = ["T20", "S110", "S310"]
 "notion_mcp/workers.py" = ["S603"]
 
 [tool.ruff.format]

@@ -1,3 +1,10 @@
+; Installer hooks for notion-mcp (Tauri NSIS).
+; "Register in AI tools" page + register/unregister come from the vendored fleet include
+; mcp-clients.nsh (copied from mcp-central-docs by native/build.ps1 - do not edit it here).
+!define MCP_REG_NAME "notion-mcp"
+!define MCP_REG_EXE "notion-mcp-backend.exe"
+!include "${__FILEDIR__}\mcp-clients.nsh"
+
 ; Kill UI + backend before install/uninstall (backend locks resources/*.exe).
 !macro KillNotionMcpFleetProcesses
   DetailPrint "Stopping notion-mcp processes..."
@@ -22,12 +29,10 @@
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
+  !insertmacro McpClientsUnregister
   !insertmacro KillNotionMcpFleetProcesses
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
-  IfFileExists "$INSTDIR\resources\install-mcp-clients.ps1" 0 mcp_hook_done
-    DetailPrint "Optional: register notion-mcp in Cursor / Claude Desktop"
-    ExecWait 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\resources\install-mcp-clients.ps1" -Interactive'
-  mcp_hook_done:
+  !insertmacro McpClientsRegister
 !macroend
