@@ -45,18 +45,22 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+    "pytest-cov>=5.0.0",
     "black>=23.0.0",
     "ruff>=0.16.0,<0.17",
-    "mypy>=1.0.0"
+    "mypy>=1.0.0",
+    "pyright>=1.1.0",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+    "pytest-cov>=5.0.0",
     "black>=23.0.0",
     "ruff>=0.16.0,<0.17",
-    "mypy>=1.0.0"
+    "mypy>=1.0.0",
+    "pyright>=1.1.0",
 ]
 
 [project.urls]
@@ -89,8 +93,13 @@ line-length = 120
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "S", "UP", "RUF"]
-ignore = ["S101", "B008", "S106", "S110", "S112", "S101", "B008", "S106", "S110", "S112", "RUF012", "S603", "S607", "S324", "E402", "E501"]
+select = ["E", "F", "W", "I", "B", "S", "UP", "RUF", "T20"]
+ignore = ["S101", "B008", "S106", "RUF012", "S603", "S607", "S324", "E402", "E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["T20", "S101"]
+"scripts/**" = ["T20"]
+"notion_mcp/workers.py" = ["S603"]
 
 [tool.ruff.format]
 quote-style = "double"

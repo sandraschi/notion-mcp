@@ -9,14 +9,23 @@ default:
 
 # Execute Ruff SOTA linting
 lint:
-    Set-Location '{{justfile_directory()}}'
-    uv run ruff check .
+    Set-Location '{{justfile_directory()}}'; uv run ruff check .
 
 # Execute Ruff auto-fix and formatting
 fix:
-    Set-Location '{{justfile_directory()}}'
-    uv run ruff check . --fix --unsafe-fixes
-    uv run ruff format .
+    Set-Location '{{justfile_directory()}}'; uv run ruff check . --fix --unsafe-fixes; uv run ruff format .
+
+# Check formatting (CI gate, no writes)
+fmt:
+    Set-Location '{{justfile_directory()}}'; uv run ruff format --check .
+
+# Run test suite
+test:
+    Set-Location '{{justfile_directory()}}'; uv run pytest tests/ -q
+
+# Pack the MCPB bundle via the fleet shim (never bare `mcpb pack`)
+mcpb-pack:
+    powershell.exe -NoProfile -File '{{justfile_directory()}}\scripts\mcpb-pack.ps1'
 
 # Biome lint frontend
 lint-web:
@@ -30,22 +39,17 @@ fix-web:
 
 # Execute Bandit security audit
 check-sec:
-    Set-Location '{{justfile_directory()}}'
-    uv run bandit -r notion_mcp/
+    Set-Location '{{justfile_directory()}}'; uv run bandit -r notion_mcp/
 
 # --- Install  serve ---
 
 # Install Python + frontend deps (run after git clone)
 bootstrap:
-    Set-Location '{{justfile_directory()}}'
-    uv sync --extra dev
-    if (Test-Path '{{justfile_directory()}}\web_sota') { Push-Location '{{justfile_directory()}}\web_sota'; npm install; Pop-Location }
-    Write-Host "Bootstrap complete. Run: just dev or start.bat" -ForegroundColor Green
+    Set-Location '{{justfile_directory()}}'; uv sync --extra dev; if (Test-Path '{{justfile_directory()}}\web_sota') { Push-Location '{{justfile_directory()}}\web_sota'; npm install; Pop-Location }; if (Get-Command pre-commit -ErrorAction SilentlyContinue) { pre-commit install } else { Write-Host 'pre-commit not on PATH, skipping hook install' }; Write-Host "Bootstrap complete. Run: just dev or start.bat" -ForegroundColor Green
 
 # Start backend only (HTTP mode)
 serve:
-    Set-Location '{{justfile_directory()}}'
-    uv run python server.py --http --port 10811
+    Set-Location '{{justfile_directory()}}'; uv run python server.py --http --port 10811
 
 # Start full stack via web_sota/start.ps1
 dev:

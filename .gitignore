@@ -125,3 +125,18 @@ native/gen/
 # on every pack. Never hand-edit, never commit.
 mcpb/src/
 
+# Assess reports: regenerable working snapshots (not source).
+# The committed registry-visible copy lives in docs/assess-reports/.
+reports/
+!docs/assess-reports/
+
+# Batch mutation safety backups (timestamped sneak-in specialist copies)
+*.bak
+*.bak.*
+
+# MCPB distributables
+*.mcpb
+
+# Local runtime data: Notion token (plaintext!), workspace export JSONs.
+# Never commit — set via webapp Settings or NOTION_TOKEN env.
+exports/
