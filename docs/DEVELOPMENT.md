@@ -11,10 +11,15 @@
 ```powershell
 uv sync --extra dev
 pre-commit install
-Push-Location web_sota; npm install; Pop-Location
+Push-Location web_sota; bun install; Pop-Location
 ```
 
 Or `just bootstrap`.
+
+Toolchain split (deliberate): bun owns `install` (`bun.lock`), lint,
+build, and test (`bun run ...`); `npm run dev` serves the dashboard
+(node is on PATH everywhere, bun is not - spawned servers must not assume
+it). Both read the same `node_modules`.
 
 ## Run
 

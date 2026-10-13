@@ -82,7 +82,7 @@ irm https://github.com/sandraschi/notion-mcp/releases/latest/download/install.ps
 
 ## Web Dashboard
 
-React 19 webapp with dark theme. Pages: Dashboard (recent content), Explorer (search + inline page viewer), AI Chat (personalities, speech input/output), Settings (token config), Status (server KPIs), Logging (ring buffer), Help.
+React 19 webapp with dark theme. Pages: Dashboard (recent content), Explorer (search + inline page viewer), AI Chat (personalities, speech input/output, streaming), Settings (token config), Status (server KPIs), Logging (ring buffer), Help, Skills, Tools, Data (import/export), Plugins, Semantic Search.
 
 ## REST API
 

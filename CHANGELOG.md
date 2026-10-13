@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased] — assfix 2026-10-13 (manifest stdio fix, /health alias, MCP mount + lifespan, shutdown/capabilities/llm endpoints, 40/40 tool docstrings, ruff gates, session injection, new docs; see git log)
 
+## [Unreleased] — deferred sweep 2026-10-13 (MCPB 3-4-100 prompts, fonts, testids, error helper, output_schema, Skills page, Zustand, SSE streaming, skills provider, zombie-clear, e2e 7/7, bun migration, spec fix, cargo check, endpoint tests; see git log)
+
 ## [1.2.1] — 2026-07-21
 
 ### Security

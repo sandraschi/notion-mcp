@@ -97,6 +97,7 @@ notion-mcp is a FastMCP 3.4 MCP server that provides comprehensive Notion worksp
 | GET | /api/llm/models | Model list per provider (live or curated fallback) |
 | GET | /api/llm/onboarding | Fresh-install starter facts for the dashboard cue |
 | POST | /api/llm/chat | Backend chat proxy (OpenAI-style messages; tries Ollama, declared fallback) |
+| POST | /api/llm/chat/stream | SSE token stream for the Chat page (tokens, then [DONE]) |
 | GET | /api/llm/providers | Provider registry (local detected + cloud configured flags) |
 | GET | /api/v1/diagnostics | Full diagnostics for CUA-NSIS smoke testing |
 | GET | /api/skills | List available skills |
@@ -150,8 +151,16 @@ just cua-nsis-test   # Install → launch → verify → uninstall
 ## Testing
 
 ```bash
-uv run pytest tests/ -q     # 20 unit tests
+uv run pytest tests/ -q     # 30 tests (20 unit + 10 endpoint), coverage floor 35
+cd web_sota && bun run test:e2e  # 7 Playwright specs (API + nav walk)
 ```
+
+## Frontend state
+
+- Package manager: bun (`bun.lock`); dev-server via npm (PATH-safe split, see docs/DEVELOPMENT.md)
+- Global LLM state in Zustand (`web_sota/src/store/llm.ts`), never per-page useState
+- Chat streams tokens via `POST /api/llm/chat/stream` (SSE) with REST fallback
+- Skills page (`/skills`) lists the MCP-served skill registry; Tools page in nav
 
 ## Data Storage
 
