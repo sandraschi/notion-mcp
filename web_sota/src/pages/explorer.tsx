@@ -169,6 +169,7 @@ export function Explorer() {
           <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
           <input
             type="text"
+            data-testid="explorer-search-input"
             placeholder="Search pages and databases..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -180,6 +181,7 @@ export function Explorer() {
         </div>
         <button
           type="button"
+          data-testid="explorer-search-button"
           onClick={searchItems}
           disabled={loading || !query.trim()}
           className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-30 text-sm text-white transition-colors"

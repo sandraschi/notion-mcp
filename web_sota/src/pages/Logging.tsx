@@ -135,8 +135,14 @@ export default function Logging() {
   return (
     <div className="space-y-4" data-testid="logging-page">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-lg font-bold text-slate-200 mr-2">Logs</h2>
+        <h2
+          data-testid="logging-title"
+          className="text-lg font-bold text-slate-200 mr-2"
+        >
+          Logs
+        </h2>
         <select
+          data-testid="logging-level-filter"
           className="h-8 rounded border border-slate-700 bg-slate-800 px-2 text-xs text-slate-300"
           value={level}
           onChange={(e) => {
@@ -152,6 +158,7 @@ export default function Logging() {
           ))}
         </select>
         <select
+          data-testid="logging-kind-filter"
           className="h-8 rounded border border-slate-700 bg-slate-800 px-2 text-xs text-slate-300"
           value={kind}
           onChange={(e) => {

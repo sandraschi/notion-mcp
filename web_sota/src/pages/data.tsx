@@ -58,7 +58,10 @@ export function DataMigration() {
   return (
     <div className="space-y-8" data-testid="data-page">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">
+        <h2
+          data-testid="data-title"
+          className="text-2xl font-bold tracking-tight text-white"
+        >
           Data & Migrations
         </h2>
         <p className="text-slate-300">
@@ -107,6 +110,7 @@ export function DataMigration() {
           <CardContent className="space-y-4">
             <button
               type="button"
+              data-testid="data-export-json"
               disabled={exporting}
               onClick={() => handleExport("json")}
               className="w-full flex items-center justify-between p-3 bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors group"
@@ -126,6 +130,7 @@ export function DataMigration() {
             </button>
             <button
               type="button"
+              data-testid="data-export-md"
               disabled={exporting}
               onClick={() => handleExport("md")}
               className="w-full flex items-center justify-between p-3 bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors group"

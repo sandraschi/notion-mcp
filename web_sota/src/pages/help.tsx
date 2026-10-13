@@ -34,7 +34,10 @@ export function Help() {
   return (
     <div className="space-y-4" data-testid="help-page">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">
+        <h2
+          data-testid="help-title"
+          className="text-2xl font-bold tracking-tight text-white"
+        >
           Help & Documentation
         </h2>
         <p className="text-slate-300">Guides, reference, and comparisons</p>
@@ -44,6 +47,7 @@ export function Help() {
         {TABS.map((tab) => (
           <button
             type="button"
+            data-testid={`help-tab-${tab.id}`}
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
