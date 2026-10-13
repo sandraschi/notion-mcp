@@ -68,7 +68,7 @@ class NotionClient:
         try:
             # Resolve dotted method names for nested attribute access
             parts = method.split(".")
-            client_method = self.client
+            client_method: Any = self.client
             for part in parts:
                 client_method = getattr(client_method, part)
             result = await client_method(*args, **kwargs)

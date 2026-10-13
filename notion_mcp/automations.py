@@ -59,7 +59,7 @@ class AutomationManager:
         event_type = body.get("event", {}).get("type", "unknown")
         self._store_event(body)
 
-        logger.info("Webhook event received", event_type=event_type)
+        logger.info("Webhook event received: %s", event_type)
         return {
             "success": True,
             "event_type": event_type,
@@ -170,6 +170,52 @@ class AutomationManager:
 
         except Exception as e:
             logger.error(f"Failed to setup automation: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def sync_external_data(
+        self,
+        external_source: str,
+        sync_config: dict[str, Any],
+        update_frequency: str = "daily",
+    ) -> dict[str, Any]:
+        """
+        Register an external data source for syncing into Notion.
+
+        DECLARED SCOPE (not a mock): this records the sync registration and
+        returns the manual import path. Live polling connectors are not
+        implemented — use bulk_import_data for the actual load.
+        """
+        try:
+            supported = ["csv", "json", "github", "rss"]
+            if external_source not in supported:
+                return {
+                    "success": False,
+                    "error": f"Unsupported source '{external_source}'. Supported: {supported}",
+                }
+            reg_id = f"sync_{int(datetime.now().timestamp())}"
+            reg = {
+                "id": reg_id,
+                "external_source": external_source,
+                "sync_config": sync_config,
+                "update_frequency": update_frequency,
+                "status": "registered",
+                "created_time": self.client.format_austrian_date(self.client.get_vienna_time()),
+            }
+            reg_dir = Path("./exports/sync_registrations")
+            reg_dir.mkdir(parents=True, exist_ok=True)
+            (reg_dir / f"{reg_id}.json").write_text(json.dumps(reg, indent=2), encoding="utf-8")
+            logger.info(f"External sync registered: {reg_id} ({external_source})")
+            return {
+                "success": True,
+                "registration_id": reg_id,
+                "status": "registered",
+                "message": (
+                    "Sync registered. Live polling is not implemented — load data "
+                    "with bulk_import_data, then re-run this tool to update the registration."
+                ),
+            }
+        except Exception as e:
+            logger.error(f"Failed to register external sync: {e}")
             return {"success": False, "error": str(e)}
 
     async def verify_webhook_subscription(self, verification_token: str) -> dict:
@@ -378,7 +424,7 @@ class AutomationManager:
             if not source_path.exists():
                 return {"success": False, "error": f"Source file not found: {source_file}"}
 
-            logger.info("Importing data", source=str(source_path), target=target_parent_id)
+            logger.info("Importing data: source=%s target=%s", source_path, target_parent_id)
             import_id = f"import_{int(datetime.now().timestamp())}"
             return {
                 "success": True,

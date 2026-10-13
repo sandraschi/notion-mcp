@@ -171,8 +171,37 @@ if MCP_BRIDGE_URLS:
 # Initialize RAG Orchestrator for knowledge management
 rag = RAGOrchestrator()
 
+# MCP HTTP sub-app (path="/" avoids BUG-008 double-prefix when mounted at /mcp)
+mcp_app = mcp.http_app(path="/")
+
+
+@asynccontextmanager
+async def app_lifespan(parent: FastAPI):
+    """Parent lifespan: enter the mounted MCP sub-app lifespan so the FastMCP
+    session manager starts (BUG-038 class — a mount without this serves /mcp
+    but real clients get 'Session terminated')."""
+    async with mcp_app.router.lifespan_context(mcp_app):
+        yield
+
+
 # Initialize FastAPI app for SOTA Dashboard
-app = FastAPI(title="NotionMCP SOTA Dashboard")
+app = FastAPI(title="NotionMCP SOTA Dashboard", lifespan=app_lifespan)
+
+
+class _McpBarePathMiddleware:
+    """Rewrite bare /mcp -> /mcp/ (Starlette Mount only matches /mcp/*)."""
+
+    def __init__(self, inner: Any):
+        self.inner = inner
+
+    async def __call__(self, scope: Any, receive: Any, send: Any):
+        if scope.get("type") == "http" and scope.get("path") == "/mcp":
+            scope["path"] = "/mcp/"
+        await self.inner(scope, receive, send)
+
+
+app.add_middleware(_McpBarePathMiddleware)
+app.mount("/mcp", mcp_app)
 
 # Add CORS middleware (fleet standard — unconditional)
 _tauri_desktop = os.environ.get("NOTION_MCP_TAURI", "").lower() in ("1", "true", "yes")
@@ -209,10 +238,21 @@ async def get_health():
     }
 
 
+@app.get("/health")
+async def get_health_root():
+    """Fleet-launcher liveness alias (fleet-start.config.ps1 HealthPath)."""
+    return await get_health()
+
+
 @app.get("/api/v1/diagnostics")
 async def get_diagnostics():
     """Full diagnostics for CUA-NSIS smoke testing."""
-    tools_list = [t.name for t in mcp.list_tools()]
+    try:
+        tools = await mcp.list_tools()
+        tools_list = [t.name for t in tools]
+    except Exception:
+        logger.exception("Failed to list tools for diagnostics")
+        tools_list = []
     return {
         "status": "ok",
         "server": "notion-mcp",
@@ -244,6 +284,46 @@ async def get_status():
         "workspace": workspace_name,
         "server_running": True,
         "mcp_version": "3.1.0",
+    }
+
+
+@app.post("/api/shutdown")
+async def shutdown_server_endpoint():
+    """Orderly exit: respond 200 immediately, then exit ~500 ms later so
+    in-flight flows (RAG syncs, exports) can checkpoint. The fleet launcher
+    calls this before bouncing the backend; without it restarts are hard."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        os._exit(0)
+    loop.call_later(0.5, lambda: os._exit(0))
+    return {"success": True, "message": "notion-mcp shutting down in ~500 ms"}
+
+
+@app.get("/api/capabilities")
+async def get_capabilities():
+    """Standard capability descriptor (TOOLS_DESIGN/WEBAPP shape) for the
+    webapp and IDE integration: server identity, transports, tool inventory,
+    feature flags."""
+    try:
+        tools = await mcp.list_tools()
+        tool_names = [t.name for t in tools]
+    except Exception:
+        logger.exception("Failed to list tools for capabilities")
+        tool_names = []
+    return {
+        "server": "notion-mcp",
+        "version": "1.2.0",
+        "transport": ["stdio", "http"],
+        "tool_count": len(tool_names),
+        "tools": tool_names,
+        "features": {
+            "rag": True,
+            "webhooks": True,
+            "chat": True,
+            "llm_discovery": True,
+            "workers": True,
+        },
     }
 
 
@@ -363,12 +443,17 @@ async def get_plugins():
 
 @app.post("/api/plugins/install/{plugin_id}")
 async def install_plugin(plugin_id: str):
-    """Install/Activate a plugin."""
+    """Install/Activate a plugin.
+
+    DECLARED SIMULATION (not a mock): writes a stub module that logs instead
+    of executing, and reports `simulated: true` so callers never mistake it
+    for a live install.
+    """
     # Simulation: Write an empty py file to plugins dir
     path = os.path.join(plugin_manager.plugins_dir, f"{plugin_id}.py")
     with open(path, "w") as f:
         f.write(f"# Plugin: {plugin_id}\ndef run():\n    print('{plugin_id} running')\n")
-    return {"success": True, "message": f"Plugin {plugin_id} installed!"}
+    return {"success": True, "message": f"Plugin {plugin_id} installed!", "simulated": True}
 
 
 @app.post("/api/import")
@@ -376,6 +461,7 @@ async def import_data(file_path: str = Body(..., embed=True), target_id: str = B
     """API endpoint for data migration."""
     try:
         initialize_notion_client()
+        assert automation_manager is not None, "Notion client failed to initialize"
         return await automation_manager.import_workspace_data(file_path, target_id)
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -386,6 +472,7 @@ async def export_data(format: str = "json"):
     """API endpoint for data export."""
     try:
         initialize_notion_client()
+        assert automation_manager is not None, "Notion client failed to initialize"
         return await automation_manager.export_workspace_data(format=format)
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -396,6 +483,7 @@ async def get_page(page_id: str):
     """Return page metadata and content blocks."""
     try:
         initialize_notion_client()
+        assert page_manager is not None, "Notion client failed to initialize"
         content = await page_manager.get_page_content(page_id, include_children=True, block_depth=5)
         page_data = content.get("page", {})
         title = "Untitled"
@@ -431,6 +519,7 @@ async def get_recent(limit: int = 20):
     """Return recent pages and databases from the Notion workspace."""
     try:
         initialize_notion_client()
+        assert page_manager is not None, "Notion client failed to initialize"
         results = await page_manager.search_pages(query="", sort_by="last_edited_time", limit=limit)
         items = []
         for r in results:
@@ -445,13 +534,15 @@ async def get_recent(limit: int = 20):
                 title_parts = props["Name"].get("title", [])
                 if title_parts:
                     title = title_parts[0].get("plain_text", "") or "Untitled"
-            items.append({
-                "id": r.get("id", ""),
-                "title": title,
-                "type": obj_type,
-                "url": r.get("url", ""),
-                "last_edited": r.get("last_edited_time", ""),
-            })
+            items.append(
+                {
+                    "id": r.get("id", ""),
+                    "title": title,
+                    "type": obj_type,
+                    "url": r.get("url", ""),
+                    "last_edited": r.get("last_edited_time", ""),
+                }
+            )
         return {"items": items}
     except Exception as e:
         return {"items": [], "error": str(e)}
@@ -462,6 +553,7 @@ async def get_stats():
     """Return real-time Notion workspace telemetry."""
     try:
         initialize_notion_client()
+        assert notion_client is not None, "Notion client failed to initialize"
         stats = await notion_client.get_stats()
         return stats
     except Exception as e:
@@ -491,15 +583,15 @@ async def llm_providers():
             if resp.status_code == 200:
                 for m in resp.json().get("models", []):
                     providers["ollama"].append({"name": m["name"]})
-        except Exception:  # noqa: S110
-            pass
+        except Exception:
+            logger.debug("Ollama provider probe: not reachable")
         try:
             resp = await client.get("http://localhost:1234/v1/models")
             if resp.status_code == 200:
                 for m in resp.json().get("data", []):
                     providers["lm_studio"].append({"name": m["id"]})
-        except Exception:  # noqa: S110
-            pass
+        except Exception:
+            logger.debug("LM Studio provider probe: not reachable")
     return providers
 
 
@@ -530,6 +622,118 @@ async def discover_llms():
     return {"llms": llms}
 
 
+@app.get("/api/llm/models")
+async def llm_models(provider: str = "ollama"):
+    """Model list per provider: live when reachable, curated fallback otherwise.
+
+    ## Return Format
+    `{"provider": str, "models": [{"name": str}], "live": bool}`.
+    """
+    name = provider.lower().replace("-", "_").replace(" ", "_")
+    if name in ("lm_studio", "lmstudio"):
+        url, key = "http://localhost:1234/v1/models", "data"
+    else:
+        url, key = "http://localhost:11434/api/tags", "models"
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=2) as client:
+            resp = await client.get(url)
+            if resp.status_code == 200:
+                items = resp.json().get(key, [])
+                models = [{"name": (m.get("name") or m.get("id", ""))} for m in items]
+                return {"provider": provider, "models": models, "live": True}
+    except Exception:
+        logger.exception("LLM model list probe failed")
+    fallback = {
+        "ollama": [{"name": "llama3.1:8b"}, {"name": "qwen2.5:7b"}],
+        "lm_studio": [{"name": "local-model"}],
+    }
+    return {
+        "provider": provider,
+        "models": fallback.get(name, []),
+        "live": False,
+    }
+
+
+@app.get("/api/llm/onboarding")
+async def llm_onboarding():
+    """Fresh-install starter facts + recommended path for the under-hero cue.
+
+    ## Return Format
+    `{"steps": [...], "recommended": str, "needs_token": bool}`.
+    """
+    try:
+        initialize_notion_client()
+        needs_token = False
+    except Exception:
+        needs_token = True
+    return {
+        "steps": [
+            "Paste your Notion integration token on the Connect screen (Settings).",
+            "Get one at https://www.notion.so/my-integrations (New integration).",
+            "Optional: start Ollama (:11434) for local RAG chat summaries.",
+        ],
+        "recommended": "settings-token-first",
+        "needs_token": needs_token,
+    }
+
+
+@app.post("/api/llm/chat")
+async def llm_chat(messages: list[dict[str, Any]] = Body(...)):
+    """Backend chat proxy (OpenAI-style messages) — the ONLY path the Chat
+    page should use. Keys never leave the server. Tries local Ollama first;
+    DECLARED FALLBACK: returns RAG context with a stub reply and
+    `declared_fallback: true` when no LLM is reachable.
+
+    ## Return Format
+    `{"reply": str, "context": [...], "model": str | None,
+    "declared_fallback": bool}`.
+    """
+    user_text = ""
+    for m in reversed(messages or []):
+        if m.get("role") == "user":
+            content = m.get("content", "")
+            user_text = content if isinstance(content, str) else str(content)
+            break
+    try:
+        context = await rag.semantic_search(user_text or "", limit=3)
+    except Exception:
+        logger.exception("RAG context build failed for llm_chat")
+        context = []
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            tags = await client.get("http://localhost:11434/api/tags")
+            model_names = [m["name"] for m in tags.json().get("models", [])] if tags.status_code == 200 else []
+            if model_names:
+                prompt = (
+                    "Context from Notion:\n"
+                    + "\n".join(f"Source: {c.get('title', '')}\nContent: {c.get('content', '')}" for c in context)
+                    + f"\n\nUser Question: {user_text}\n\nAnswer based on the context."
+                )
+                gen = await client.post(
+                    "http://localhost:11434/api/generate",
+                    json={"model": model_names[0], "prompt": prompt, "stream": False},
+                )
+                if gen.status_code == 200:
+                    return {
+                        "reply": gen.json().get("response", ""),
+                        "context": context,
+                        "model": model_names[0],
+                        "declared_fallback": False,
+                    }
+    except Exception:
+        logger.exception("Local LLM chat attempt failed, using declared fallback")
+    return {
+        "reply": "RAG Context provided. Local LLM invocation would happen here.",
+        "context": context,
+        "model": None,
+        "declared_fallback": True,
+    }
+
+
 @app.post("/api/search")
 async def semantic_search(query: str = Body(..., embed=True)):
     """SOTA Semantic Search endpoint."""
@@ -538,7 +742,12 @@ async def semantic_search(query: str = Body(..., embed=True)):
 
 @app.post("/api/chat")
 async def chat_interaction(message: str = Body(..., embed=True), model_url: str | None = None):
-    """RAG-powered chat with local LLM integration."""
+    """RAG-powered chat with local LLM integration.
+
+    DECLARED FALLBACK (not a mock): without a configured local LLM this
+    returns the retrieved RAG context plus a stub reply and
+    `declared_fallback: true`. Prefer POST /api/llm/chat (tries Ollama).
+    """
     context = await rag.semantic_search(message, limit=3)
     context_text = "\n".join([f"Source: {c['title']}\nContent: {c['content']}" for c in context])
 
@@ -549,6 +758,7 @@ async def chat_interaction(message: str = Body(..., embed=True), model_url: str 
     return {
         "reply": "RAG Context provided. Local LLM invocation would happen here.",
         "context": context,
+        "declared_fallback": True,
     }
 
 
@@ -556,6 +766,7 @@ async def chat_interaction(message: str = Body(..., embed=True), model_url: str 
 async def notion_webhook_receiver(request: Request):
     """Receive Notion webhook events (verification + content events)."""
     initialize_notion_client()
+    assert automation_manager is not None, "Notion client failed to initialize"
     body = await request.json()
     headers = dict(request.headers)
     result = await automation_manager.receive_webhook_event(headers, body)
@@ -567,6 +778,7 @@ async def notion_webhook_receiver(request: Request):
 async def get_webhook_events(limit: int = 50, event_type: str | None = None):
     """List stored webhook events."""
     initialize_notion_client()
+    assert automation_manager is not None, "Notion client failed to initialize"
     return await automation_manager.list_webhook_events(limit=limit, event_type=event_type)
 
 
@@ -656,21 +868,40 @@ async def manage_notion_data(
     children: list[dict[str, Any]] | None = Field(default=None, description="Child blocks"),
     extra_params: dict[str, Any] | None = Field(default=None, description="Advanced API parameters"),
 ) -> dict[str, Any]:
-    """Consolidated CRUD management for Notion Pages, Data Sources, and Blocks."""
+    """Consolidated CRUD management for Notion Pages, Data Sources, and Blocks.
+
+    ## Return Format
+    `{"success": bool, "message"?: str, "error"?: str, ...}` — create returns
+    `id`+`url`; retrieve returns `data`; update/archive return `message`.
+
+    ## Examples
+    `manage_notion_data(operation="retrieve", entity_type="page", entity_id="...")`
+    -> `{"success": True, "data": {...}, "message": "page retrieved."}`.
+    """
     try:
         initialize_notion_client()
+        assert page_manager is not None, "Notion client failed to initialize"
+        assert db_manager is not None, "Notion client failed to initialize"
+        assert notion_client is not None, "Notion client failed to initialize"
         extra_params = extra_params or {}
 
         if operation == "create":
             if entity_type == "page":
+                if not title:
+                    return {"success": False, "error": "title is required for 'create'"}
                 result = await page_manager.create_page(
                     title=title,
-                    content=content,
+                    content=content or "",
                     parent_id=parent_id,
                     properties=properties,
                     children=children,
                 )
             elif entity_type == "data_source":
+                if not title or not parent_id:
+                    return {
+                        "success": False,
+                        "error": "title and parent_id are required to create a data source",
+                    }
                 result = await db_manager.create_database(
                     title=title,
                     parent_id=parent_id,
@@ -708,7 +939,7 @@ async def manage_notion_data(
                     "success": False,
                     "error": f"Unsupported retrieval type: {entity_type}",
                 }
-            return {"success": True, "data": result}
+            return {"success": True, "data": result, "message": f"{entity_type} retrieved."}
 
         if operation == "update":
             if entity_type == "page":
@@ -750,9 +981,19 @@ async def query_data_source(
     limit: int = Field(default=50, description="Max results"),
     cursor: str | None = Field(default=None, description="Pagination cursor"),
 ) -> dict[str, Any]:
-    """High-speed exploration of structured data sources with complex filtering."""
+    """High-speed exploration of structured data sources with complex filtering.
+
+    ## Return Format
+    `{"success": bool, "results": [...], "has_more": bool,
+    "next_cursor"?: str, "message": str}`.
+
+    ## Examples
+    `query_data_source(data_source_id="...", limit=10)`
+    -> `{"success": True, "results": [...], "has_more": False, ...}`.
+    """
     try:
         initialize_notion_client()
+        assert db_manager is not None, "Notion client failed to initialize"
         results = await db_manager.query_database(
             database_id=data_source_id,
             filter=filter,
@@ -780,9 +1021,19 @@ async def search_notion_knowledge(
     ),
     limit: int = Field(default=10, description="Max results"),
 ) -> dict[str, Any]:
-    """Powerful SOTA search leveraging both Notion API and local RAG pipeline."""
+    """Powerful SOTA search leveraging both Notion API and local RAG pipeline.
+
+    ## Return Format
+    `{"success": bool, "results": [...], "mode": str, "message": str}` —
+    items are `{"type": "rag"|"api", ...}`.
+
+    ## Examples
+    `search_notion_knowledge(query="roadmap", mode="hybrid")`
+    -> `{"success": True, "results": [...], "mode": "hybrid"}`.
+    """
     try:
         initialize_notion_client()
+        assert page_manager is not None, "Notion client failed to initialize"
         results = []
 
         if mode in ["semantic", "hybrid"]:
@@ -811,7 +1062,14 @@ async def sync_rag_index(
     ),
     force_rebuild: bool = Field(default=False, description="Rebuild index from scratch"),
 ) -> dict[str, Any]:
-    """Synchronize Notion workspace knowledge to local LanceDB vector store."""
+    """Synchronize Notion workspace knowledge to local LanceDB vector store.
+
+    ## Return Format
+    `{"success": bool, "message": str}` — the sweep runs in background.
+
+    ## Examples
+    `sync_rag_index(force_rebuild=False)` -> `{"success": True, ...}`.
+    """
     try:
         initialize_notion_client()
         # In a real implementation, this would trigger the indexing loop
@@ -822,6 +1080,83 @@ async def sync_rag_index(
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@mcp.tool(annotations=_READ_ONLY)
+async def server_help() -> dict[str, Any]:
+    """Show server capabilities, tool inventory, and usage pointers.
+
+    ## Return Format
+    `{"success": bool, "message": str, "server": str, "version": str,
+    "tool_count": int, "tools": [str], "dashboard": str, "api": str}`.
+
+    ## Examples
+    `server_help()` -> `{"success": True, "tool_count": 40, ...}`.
+    """
+    try:
+        tools = await mcp.list_tools()
+        names = [t.name for t in tools]
+    except Exception:
+        logger.exception("server_help failed to list tools")
+        names = []
+    return {
+        "success": True,
+        "message": (
+            f"notion-mcp exposes {len(names)} tools: pages, databases, comments, "
+            "RAG search, automations, workers, webhooks. Start with search_pages "
+            "or search_notion_knowledge; see dashboard for visual browsing."
+        ),
+        "server": "notion-mcp",
+        "version": "1.2.0",
+        "tool_count": len(names),
+        "tools": names,
+        "dashboard": "http://127.0.0.1:10810",
+        "api": "http://127.0.0.1:10811",
+    }
+
+
+@mcp.tool(annotations=_DESTRUCTIVE)
+async def shutdown_server() -> dict[str, Any]:
+    """Gracefully shut down the server process (orderly self-termination).
+
+    ## Return Format
+    `{"success": bool, "message": str}` — the process exits ~500 ms after
+    responding so in-flight work can checkpoint.
+
+    ## Examples
+    `shutdown_server()` -> `{"success": True, "message": "shutting down..."}`.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        os._exit(0)
+    loop.call_later(0.5, lambda: os._exit(0))
+    return {"success": True, "message": "notion-mcp shutting down in ~500 ms"}
+
+
+@mcp.resource("notion://status")
+async def resource_status() -> str:
+    """Live server status (identity, version, uptime)."""
+    import json
+
+    return json.dumps(
+        {
+            "server": "notion-mcp",
+            "version": "1.2.0",
+            "uptime_seconds": int(time.time() - _server_start_time),
+        }
+    )
+
+
+@mcp.prompt()
+async def notion_quickstart() -> str:
+    """Starter workflow: find a page, read it, update it."""
+    return (
+        "To work with the Notion workspace: 1) search_notion_knowledge(query) to "
+        "find relevant pages, 2) get_page_content(page_id) to read one, "
+        "3) update_page(page_id, ...) to change it. Ask for a token via the "
+        "dashboard Settings page if tools report missing authentication."
+    )
 
 
 # 📄 Legacy Logic (Redirected to Portmanteau)
@@ -839,9 +1174,19 @@ async def create_page(
     properties: dict[str, Any] | None = Field(default=None, description="Page properties if parent is a database"),
     children: list[dict[str, Any]] | None = Field(default=None, description="Child blocks to add to the page"),
 ) -> dict[str, Any]:
-    """Create a new Notion page with content, properties, and Austrian efficiency."""
+    """Create a new Notion page with content, properties, and Austrian efficiency.
+
+    ## Return Format
+    `{"success": bool, "page_id": str, "url": str, "title": str,
+    "message": str}`.
+
+    ## Examples
+    `create_page(title="Neu", content="Hallo")`
+    -> `{"success": True, "page_id": "...", ...}`.
+    """
     try:
         initialize_notion_client()  # Ensure client is initialized
+        assert page_manager is not None, "Notion client failed to initialize"
         result = await page_manager.create_page(
             title=title,
             content=content,
@@ -874,8 +1219,18 @@ async def update_page(
     properties: dict[str, Any] | None = Field(default=None, description="Updated properties"),
     archived: bool | None = Field(default=None, description="Archive status"),
 ) -> dict[str, Any]:
-    """Update existing Notion page with Austrian efficiency."""
+    """Update existing Notion page with Austrian efficiency.
+
+    ## Return Format
+    `{"success": bool, "page_id": str, "updated_fields": [...],
+    "message": str}`.
+
+    ## Examples
+    `update_page(page_id="...", title="Neu")` -> `{"success": True, ...}`.
+    """
     try:
+        initialize_notion_client()
+        assert page_manager is not None, "Notion client failed to initialize"
         result = await page_manager.update_page(
             page_id=page_id,
             title=title,
@@ -905,8 +1260,17 @@ async def get_page_content(
     include_children: bool = Field(default=True, description="Include child blocks"),
     block_depth: int = Field(default=10, description="Maximum depth for nested blocks"),
 ) -> dict[str, Any]:
-    """Retrieve complete page content with Austrian efficiency optimization."""
+    """Retrieve complete page content with Austrian efficiency optimization.
+
+    ## Return Format
+    `{"success": bool, "page": {...}, "message": str}`.
+
+    ## Examples
+    `get_page_content(page_id="...")` -> `{"success": True, "page": {...}}`.
+    """
     try:
+        initialize_notion_client()
+        assert page_manager is not None, "Notion client failed to initialize"
         result = await page_manager.get_page_content(
             page_id=page_id, include_children=include_children, block_depth=block_depth
         )
@@ -935,8 +1299,18 @@ async def search_pages(
     ),
     limit: int = Field(default=10, description="Maximum results to return"),
 ) -> dict[str, Any]:
-    """Natural language search across entire Notion workspace."""
+    """Natural language search across entire Notion workspace.
+
+    ## Return Format
+    `{"success": bool, "results": [...], "count": int, "query": str,
+    "message": str}`.
+
+    ## Examples
+    `search_pages(query="urlaub")` -> `{"success": True, "count": 3, ...}`.
+    """
     try:
+        initialize_notion_client()
+        assert page_manager is not None, "Notion client failed to initialize"
         results = await page_manager.search_pages(
             query=query, filter_by_type=filter_by_type, sort_by=sort_by, limit=limit
         )
@@ -963,8 +1337,18 @@ async def archive_page(
     permanent_delete: bool = Field(default=False, description="Permanently delete instead of archive"),
     backup_first: bool = Field(default=True, description="Create backup before deletion"),
 ) -> dict[str, Any]:
-    """Safely archive or delete pages with Austrian efficiency confirmations."""
+    """Safely archive or delete pages with Austrian efficiency confirmations.
+
+    ## Return Format
+    `{"success": bool, "page_id": str, "action": "archived"|"deleted",
+    "backup_created": bool, "message": str}`.
+
+    ## Examples
+    `archive_page(page_id="...")` -> `{"success": True, "action": "archived"}`.
+    """
     try:
+        initialize_notion_client()
+        assert page_manager is not None, "Notion client failed to initialize"
         await page_manager.archive_page(
             page_id=page_id,
             permanent_delete=permanent_delete,
@@ -1004,8 +1388,19 @@ async def create_database(
     icon: str | None = Field(default=None, description="Database icon (emoji or external URL)"),
     cover: str | None = Field(default=None, description="Database cover image URL"),
 ) -> dict[str, Any]:
-    """Create databases with custom property schemas."""
+    """Create databases with custom property schemas.
+
+    ## Return Format
+    `{"success": bool, "database_id": str, "url": str, "title": str,
+    "properties": {...}, "message": str}`.
+
+    ## Examples
+    `create_database(title="DB", parent_id="...", properties_schema={...})`
+    -> `{"success": True, "database_id": "..."}`.
+    """
     try:
+        initialize_notion_client()
+        assert db_manager is not None, "Notion client failed to initialize"
         result = await db_manager.create_database(
             title=title,
             parent_id=parent_id,
@@ -1039,8 +1434,18 @@ async def query_database(
     limit: int = Field(default=100, description="Maximum results"),
     cursor: str | None = Field(default=None, description="Pagination cursor"),
 ) -> dict[str, Any]:
-    """Query databases with complex filters and sorts."""
+    """Query databases with complex filters and sorts.
+
+    ## Return Format
+    `{"success": bool, "results": [...], "has_more": bool,
+    "next_cursor"?: str, "count": int, "message": str}`.
+
+    ## Examples
+    `query_database(database_id="...")` -> `{"success": True, "count": 5}`.
+    """
     try:
+        initialize_notion_client()
+        assert db_manager is not None, "Notion client failed to initialize"
         results = await db_manager.query_database(
             database_id=database_id,
             filter=filter,
@@ -1078,8 +1483,19 @@ async def create_database_entry(
     content: str = Field(default="", description="Entry content"),
     children: list[dict[str, Any]] | None = Field(default=None, description="Child blocks"),
 ) -> dict[str, Any]:
-    """Add entries with all property types (text, select, date, etc.)"""
+    """Add entries with all property types (text, select, date, etc.)
+
+    ## Return Format
+    `{"success": bool, "page_id": str, "database_id": str,
+    "properties": {...}, "message": str}`.
+
+    ## Examples
+    `create_database_entry(database_id="...", properties={...})`
+    -> `{"success": True, "page_id": "..."}`.
+    """
     try:
+        initialize_notion_client()
+        assert db_manager is not None, "Notion client failed to initialize"
         result = await db_manager.create_database_entry(
             database_id=database_id,
             properties=properties,
@@ -1110,8 +1526,19 @@ async def update_database_entry(
     content: str | None = Field(default=None, description="Updated content"),
     archived: bool | None = Field(default=None, description="Archive status"),
 ) -> dict[str, Any]:
-    """Update existing database entries and properties."""
+    """Update existing database entries and properties.
+
+    ## Return Format
+    `{"success": bool, "page_id": str, "updated_properties"?: {...},
+    "message": str}`.
+
+    ## Examples
+    `update_database_entry(page_id="...", properties={...})`
+    -> `{"success": True}`.
+    """
     try:
+        initialize_notion_client()
+        assert db_manager is not None, "Notion client failed to initialize"
         await db_manager.update_database_entry(
             page_id=page_id, properties=properties, content=content, archived=archived
         )
@@ -1137,8 +1564,18 @@ async def get_database_schema(
     include_statistics: bool = Field(default=False, description="Include usage statistics"),
     property_details: bool = Field(default=True, description="Include detailed property information"),
 ) -> dict[str, Any]:
-    """Retrieve database structure, properties, and metadata."""
+    """Retrieve database structure, properties, and metadata.
+
+    ## Return Format
+    `{"success": bool, "schema": {...}, "message": str}`.
+
+    ## Examples
+    `get_database_schema(database_id="...")`
+    -> `{"success": True, "schema": {...}}`.
+    """
     try:
+        initialize_notion_client()
+        assert db_manager is not None, "Notion client failed to initialize"
         result = await db_manager.get_database_schema(
             database_id=database_id,
             include_statistics=include_statistics,
@@ -1166,8 +1603,19 @@ async def bulk_import_data(
     mapping: dict[str, str] | None = Field(default=None, description="Field mapping (source -> target)"),
     merge_strategy: str = Field(default="create_new", description="How to handle existing data"),
 ) -> dict[str, Any]:
-    """Import CSV/JSON data efficiently into databases."""
+    """Import CSV/JSON data efficiently into databases.
+
+    ## Return Format
+    `{"success": bool, "import_results": {...}, "message": str}` with
+    `successful_imports`/`total_records` counts.
+
+    ## Examples
+    `bulk_import_data(database_id="...", data_source="[...]")`
+    -> `{"success": True, "import_results": {...}}`.
+    """
     try:
+        initialize_notion_client()
+        assert db_manager is not None, "Notion client failed to initialize"
         result = await db_manager.bulk_import_data(
             database_id=database_id,
             data_source=data_source,
@@ -1204,8 +1652,18 @@ async def add_comment(
     parent_comment_id: str | None = Field(default=None, description="Parent comment for threaded discussions"),
     rich_text: list[dict[str, Any]] | None = Field(default=None, description="Rich text formatting"),
 ) -> dict[str, Any]:
-    """Add comments to pages or specific blocks."""
+    """Add comments to pages or specific blocks.
+
+    ## Return Format
+    `{"success": bool, "comment": {...}, "message": str}`.
+
+    ## Examples
+    `add_comment(page_id="...", content="Hallo")`
+    -> `{"success": True, "comment": {...}}`.
+    """
     try:
+        initialize_notion_client()
+        assert collab_manager is not None, "Notion client failed to initialize"
         result = await collab_manager.add_comment(
             page_id=page_id,
             content=content,
@@ -1234,8 +1692,17 @@ async def get_comments(
     sort_by: str = Field(default="created_time", description="Sort field"),
     limit: int = Field(default=50, description="Maximum comments to return"),
 ) -> dict[str, Any]:
-    """Retrieve page/block discussions and comment threads."""
+    """Retrieve page/block discussions and comment threads.
+
+    ## Return Format
+    `{"success": bool, "comments": [...], "count": int, "message": str}`.
+
+    ## Examples
+    `get_comments(page_id="...")` -> `{"success": True, "count": 2}`.
+    """
     try:
+        initialize_notion_client()
+        assert collab_manager is not None, "Notion client failed to initialize"
         results = await collab_manager.get_comments(
             page_id=page_id,
             include_resolved=include_resolved,
@@ -1258,14 +1725,23 @@ async def get_comments(
         }
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, app=True)
 async def get_workspace_users(
     include_inactive: bool = Field(default=False, description="Include inactive users"),
     permission_level: str | None = Field(default=None, description="Filter by permission level"),
     sort_by: str = Field(default="name", description="Sort field"),
 ) -> dict[str, Any]:
-    """List workspace users, permissions, and activity."""
+    """List workspace users, permissions, and activity.
+
+    ## Return Format
+    `{"success": bool, "users": [...], "count": int, "message": str}`.
+
+    ## Examples
+    `get_workspace_users()` -> `{"success": True, "count": 4, ...}`.
+    """
     try:
+        initialize_notion_client()
+        assert collab_manager is not None, "Notion client failed to initialize"
         results = await collab_manager.get_workspace_users(
             include_inactive=include_inactive,
             permission_level=permission_level,
@@ -1297,8 +1773,17 @@ async def setup_automation(
     actions: list[dict[str, Any]] = Field(description="Actions to perform"),
     webhook_url: str | None = Field(default=None, description="Optional webhook URL"),
 ) -> dict[str, Any]:
-    """Configure a Notion automation with webhook integration."""
+    """Configure a Notion automation with webhook integration.
+
+    ## Return Format
+    Automation-manager result dict with `success` + `message`.
+
+    ## Examples
+    `setup_automation(trigger_type="page_created", conditions={...},
+    actions=[...])` -> `{"success": True, ...}`.
+    """
     initialize_notion_client()
+    assert automation_manager is not None, "Notion client failed to initialize"
     return await automation_manager.setup_automation(
         trigger_type=trigger_type,
         conditions=conditions,
@@ -1313,8 +1798,20 @@ async def sync_external_data(
     sync_config: dict[str, Any] = Field(description="Sync configuration"),
     update_frequency: str = Field(default="daily", description="Update frequency"),
 ) -> dict[str, Any]:
-    """Create synced databases from external tools."""
+    """Create synced databases from external tools.
+
+    DECLARED SCOPE: registers the sync configuration; live polling is not
+    implemented (load via bulk_import_data).
+
+    ## Return Format
+    Automation-manager result dict with `success` + `message`.
+
+    ## Examples
+    `sync_external_data(external_source="csv", sync_config={...})`
+    -> `{"success": True, ...}`.
+    """
     initialize_notion_client()
+    assert automation_manager is not None, "Notion client failed to initialize"
     return await automation_manager.sync_external_data(
         external_source=external_source,
         sync_config=sync_config,
@@ -1329,8 +1826,16 @@ async def generate_ai_summary(
     length: str = Field(default="medium", description="Summary length"),
     focus_areas: list[str] | None = Field(default=None, description="Areas to focus on"),
 ) -> dict[str, Any]:
-    """Summarize page content using LLM API or fallback."""
+    """Summarize page content using LLM API or fallback.
+
+    ## Return Format
+    Automation-manager result dict with `success` + summary payload.
+
+    ## Examples
+    `generate_ai_summary(page_id="...")` -> `{"success": True, ...}`.
+    """
     initialize_notion_client()
+    assert automation_manager is not None, "Notion client failed to initialize"
     return await automation_manager.generate_ai_summary(
         page_id=page_id,
         summary_type=summary_type,
@@ -1346,8 +1851,17 @@ async def export_workspace_data(
     include_metadata: bool = Field(default=True, description="Include metadata"),
     compression: bool = Field(default=True, description="Compress export"),
 ) -> dict[str, Any]:
-    """Backup and export functionality with multiple formats."""
+    """Backup and export functionality with multiple formats.
+
+    ## Return Format
+    Automation-manager result dict with `success` + export payload/path.
+
+    ## Examples
+    `export_workspace_data(scope="workspace", format="json")`
+    -> `{"success": True, ...}`.
+    """
     initialize_notion_client()
+    assert automation_manager is not None, "Notion client failed to initialize"
     return await automation_manager.export_workspace_data(
         scope=scope, format=format, include_metadata=include_metadata, compression=compression
     )
@@ -1359,8 +1873,17 @@ async def import_workspace_data(
     target_parent_id: str = Field(description="Parent Page/Database ID in Notion"),
     import_type: str = Field(default="markdown", description="Type of data: markdown or json"),
 ) -> dict[str, Any]:
-    """Import external data into Notion workspace."""
+    """Import external data into Notion workspace.
+
+    ## Return Format
+    Automation-manager result dict with `success` + import counts.
+
+    ## Examples
+    `import_workspace_data(source_path="data.json",
+    target_parent_id="...")` -> `{"success": True, ...}`.
+    """
     initialize_notion_client()
+    assert automation_manager is not None, "Notion client failed to initialize"
     return await automation_manager.import_workspace_data(
         source_file=source_path,
         target_parent_id=target_parent_id,
@@ -1373,8 +1896,17 @@ async def orchestrate_automation(
     operation: str = Field(description="Automation operation: setup, sync_external, report, export"),
     config: dict[str, Any] = Field(description="Automation configuration"),
 ) -> dict[str, Any]:
-    """SOTA Orchestrator for Notion automations, bulk syncing, and reporting."""
+    """SOTA Orchestrator for Notion automations, bulk syncing, and reporting.
+
+    ## Return Format
+    Handler result dict (`success` + payload) for the chosen `operation`.
+
+    ## Examples
+    `orchestrate_automation(operation="export", config={...})`
+    -> `{"success": True, ...}`.
+    """
     initialize_notion_client()
+    assert automation_manager is not None, "Notion client failed to initialize"
     ops = {
         "setup": automation_manager.setup_automation,
         "sync_external": automation_manager.sync_external_data,
@@ -1394,18 +1926,34 @@ async def orchestrate_automation(
 async def verify_webhook(
     verification_token: str = Field(description="Verification token from Notion's webhook POST"),
 ) -> dict[str, Any]:
-    """Store a webhook verification token from Notion."""
+    """Store a webhook verification token from Notion.
+
+    ## Return Format
+    Automation-manager result dict with `success` + `message`.
+
+    ## Examples
+    `verify_webhook(verification_token="...")` -> `{"success": True}`.
+    """
     initialize_notion_client()
+    assert automation_manager is not None, "Notion client failed to initialize"
     return await automation_manager.verify_webhook_subscription(verification_token)
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool(annotations=_READ_ONLY, app=True)
 async def list_webhook_events(
     limit: int = Field(default=50, description="Max events to return"),
     event_type: str | None = Field(default=None, description="Filter by event type"),
 ) -> dict[str, Any]:
-    """List received Notion webhook events."""
+    """List received Notion webhook events.
+
+    ## Return Format
+    `{"success": bool, "events": [...], "count": int}`.
+
+    ## Examples
+    `list_webhook_events(limit=10)` -> `{"success": True, "count": 2}`.
+    """
     initialize_notion_client()
+    assert automation_manager is not None, "Notion client failed to initialize"
     events = await automation_manager.list_webhook_events(limit=limit, event_type=event_type)
     return {"success": True, "events": events, "count": len(events)}
 
@@ -1417,13 +1965,27 @@ async def list_webhook_events(
 async def deploy_worker(
     project_dir: str | None = Field(default=None, description="Worker project directory (default: current dir)"),
 ) -> dict[str, Any]:
-    """Deploy a Notion Worker. Requires ntn CLI installed."""
+    """Deploy a Notion Worker. Requires ntn CLI installed.
+
+    ## Return Format
+    `{"success": bool, "data"?: {...}, "error"?: str}` from the ntn CLI.
+
+    ## Examples
+    `deploy_worker(project_dir=".")` -> `{"success": True, ...}`.
+    """
     return await notion_workers.deploy_worker(project_dir)
 
 
 @mcp.tool(annotations=_READ_ONLY)
 async def list_workers() -> dict[str, Any]:
-    """List deployed Notion Workers. Requires ntn CLI."""
+    """List deployed Notion Workers. Requires ntn CLI.
+
+    ## Return Format
+    `{"success": bool, "data"?: [...], "error"?: str}`.
+
+    ## Examples
+    `list_workers()` -> `{"success": True, "data": [...]}`.
+    """
     return await notion_workers.list_workers()
 
 
@@ -1431,7 +1993,14 @@ async def list_workers() -> dict[str, Any]:
 async def scaffold_worker(
     project_dir: str = Field(description="Directory to scaffold the worker project"),
 ) -> dict[str, Any]:
-    """Scaffold a new Notion Worker project. Requires ntn CLI."""
+    """Scaffold a new Notion Worker project. Requires ntn CLI.
+
+    ## Return Format
+    `{"success": bool, "data"?: {...}, "error"?: str}`.
+
+    ## Examples
+    `scaffold_worker(project_dir="./w")` -> `{"success": True}`.
+    """
     return await notion_workers.scaffold_worker(project_dir)
 
 
@@ -1440,13 +2009,27 @@ async def worker_logs(
     worker_name: str | None = Field(default=None, description="Worker name filter"),
     tail: int = Field(default=50, description="Number of log lines"),
 ) -> dict[str, Any]:
-    """Fetch logs from a deployed Notion Worker."""
+    """Fetch logs from a deployed Notion Worker.
+
+    ## Return Format
+    `{"success": bool, "data"?: {...}, "error"?: str}`.
+
+    ## Examples
+    `worker_logs(tail=20)` -> `{"success": True, ...}`.
+    """
     return await notion_workers.worker_logs(worker_name=worker_name, tail=tail)
 
 
 @mcp.tool(annotations=_READ_ONLY)
 async def check_ntn() -> dict[str, Any]:
-    """Check if Notion CLI (ntn) is installed."""
+    """Check if Notion CLI (ntn) is installed.
+
+    ## Return Format
+    `{"success": bool, "version"?: str, "error"?: str}`.
+
+    ## Examples
+    `check_ntn()` -> `{"success": True, "version": "ntn 1.2.3"}`.
+    """
     return await notion_workers.check_ntn_version()
 
 
@@ -1457,7 +2040,15 @@ async def orchestrate_workers(
     worker_name: str | None = Field(default=None, description="Worker name (for logs)"),
     tail: int = Field(default=50, description="Log lines (for logs)"),
 ) -> dict[str, Any]:
-    """Orchestrate Notion Workers operations."""
+    """Orchestrate Notion Workers operations.
+
+    ## Return Format
+    Handler result dict (`success` + payload) for the chosen `operation`.
+
+    ## Examples
+    `orchestrate_workers(operation="check")`
+    -> `{"success": True, "version": "..."}`.
+    """
     ops = {
         "deploy": lambda: notion_workers.deploy_worker(project_dir),
         "list": notion_workers.list_workers,
@@ -1479,9 +2070,18 @@ async def append_blocks(
     block_id: str = Field(description="Page or block ID to append children to"),
     children: list[dict[str, Any]] = Field(description="List of block objects to append"),
 ) -> dict[str, Any]:
-    """Append child blocks to an existing page or block."""
+    """Append child blocks to an existing page or block.
+
+    ## Return Format
+    `{"success": bool, "result": {...}, "message": str}`.
+
+    ## Examples
+    `append_blocks(block_id="...", children=[...])`
+    -> `{"success": True, "message": "Appended 2 blocks."}`.
+    """
     try:
         initialize_notion_client()
+        assert notion_client is not None, "Notion client failed to initialize"
         result = await notion_client.append_block_children(block_id, children)
         return {"success": True, "result": result, "message": f"Appended {len(children)} blocks."}
     except Exception as e:
@@ -1495,12 +2095,21 @@ async def update_block(
     content: dict[str, Any] = Field(description="Block content properties (e.g. rich_text, checked)"),
     archived: bool | None = Field(default=None, description="Archive or unarchive the block"),
 ) -> dict[str, Any]:
-    """Update a specific block's content or properties."""
+    """Update a specific block's content or properties.
+
+    ## Return Format
+    `{"success": bool, "result": {...}, "message": str}`.
+
+    ## Examples
+    `update_block(block_id="...", block_type="paragraph", content={...})`
+    -> `{"success": True}`.
+    """
     try:
         initialize_notion_client()
         kwargs: dict[str, Any] = {block_type: content}
         if archived is not None:
             kwargs["archived"] = archived
+        assert notion_client is not None, "Notion client failed to initialize"
         result = await notion_client.update_block(block_id, **kwargs)
         return {"success": True, "result": result, "message": "Block updated."}
     except Exception as e:
@@ -1511,9 +2120,17 @@ async def update_block(
 async def delete_block(
     block_id: str = Field(description="Block ID to archive/delete"),
 ) -> dict[str, Any]:
-    """Archive (soft-delete) a block by ID."""
+    """Archive (soft-delete) a block by ID.
+
+    ## Return Format
+    `{"success": bool, "result": {...}, "message": str}`.
+
+    ## Examples
+    `delete_block(block_id="...")` -> `{"success": True, ...}`.
+    """
     try:
         initialize_notion_client()
+        assert notion_client is not None, "Notion client failed to initialize"
         result = await notion_client.delete_block(block_id)
         return {"success": True, "result": result, "message": "Block archived."}
     except Exception as e:
@@ -1527,9 +2144,18 @@ async def delete_block(
 async def get_page_markdown(
     page_id: str = Field(description="Page ID to retrieve as markdown"),
 ) -> dict[str, Any]:
-    """Retrieve page content as enhanced markdown (API 2026-03-11)."""
+    """Retrieve page content as enhanced markdown (API 2026-03-11).
+
+    ## Return Format
+    `{"success": bool, "markdown": str, "page_id": str}`.
+
+    ## Examples
+    `get_page_markdown(page_id="...")`
+    -> `{"success": True, "markdown": "# ...", ...}`.
+    """
     try:
         initialize_notion_client()
+        assert notion_client is not None, "Notion client failed to initialize"
         result = await notion_client.retrieve_page_markdown(page_id)
         return {"success": True, "markdown": result.get("markdown", ""), "page_id": page_id}
     except Exception as e:
@@ -1541,9 +2167,18 @@ async def update_page_markdown(
     page_id: str = Field(description="Page ID to update"),
     markdown: str = Field(description="Full markdown content to write to the page"),
 ) -> dict[str, Any]:
-    """Update page content using enhanced markdown (API 2026-03-11)."""
+    """Update page content using enhanced markdown (API 2026-03-11).
+
+    ## Return Format
+    `{"success": bool, "result": {...}, "message": str}`.
+
+    ## Examples
+    `update_page_markdown(page_id="...", markdown="# Neu")`
+    -> `{"success": True}`.
+    """
     try:
         initialize_notion_client()
+        assert notion_client is not None, "Notion client failed to initialize"
         result = await notion_client.update_page_markdown(page_id, markdown)
         return {"success": True, "result": result, "message": "Page updated via markdown."}
     except Exception as e:
@@ -1560,7 +2195,15 @@ async def update_database_schema(
     properties: dict[str, Any] | None = Field(default=None, description="Property schema changes (add/remove/modify)"),
     description: list[dict[str, Any]] | None = Field(default=None, description="Rich text description"),
 ) -> dict[str, Any]:
-    """Update database properties, title, or description."""
+    """Update database properties, title, or description.
+
+    ## Return Format
+    `{"success": bool, "result": {...}, "message": str}`.
+
+    ## Examples
+    `update_database_schema(database_id="...", title="Neu")`
+    -> `{"success": True}`.
+    """
     try:
         initialize_notion_client()
         kwargs: dict[str, Any] = {}
@@ -1570,6 +2213,7 @@ async def update_database_schema(
             kwargs["properties"] = properties
         if description:
             kwargs["description"] = description
+        assert notion_client is not None, "Notion client failed to initialize"
         result = await notion_client.update_database_schema(database_id, **kwargs)
         return {"success": True, "result": result, "message": "Database schema updated."}
     except Exception as e:
@@ -1584,6 +2228,7 @@ async def append_blocks_rest(page_id: str, children: list[dict[str, Any]] = Body
     """Append child blocks to a page."""
     try:
         initialize_notion_client()
+        assert notion_client is not None, "Notion client failed to initialize"
         result = await notion_client.append_block_children(page_id, children)
         return {"success": True, "result": result}
     except Exception as e:
@@ -1595,6 +2240,7 @@ async def update_block_rest(page_id: str, block_id: str, data: dict[str, Any] = 
     """Update a specific block."""
     try:
         initialize_notion_client()
+        assert notion_client is not None, "Notion client failed to initialize"
         result = await notion_client.update_block(block_id, **data)
         return {"success": True, "result": result}
     except Exception as e:
@@ -1606,6 +2252,7 @@ async def delete_block_rest(page_id: str, block_id: str):
     """Archive a block."""
     try:
         initialize_notion_client()
+        assert notion_client is not None, "Notion client failed to initialize"
         result = await notion_client.delete_block(block_id)
         return {"success": True, "result": result}
     except Exception as e:
@@ -1617,6 +2264,7 @@ async def get_page_markdown_rest(page_id: str):
     """Retrieve page as markdown."""
     try:
         initialize_notion_client()
+        assert notion_client is not None, "Notion client failed to initialize"
         result = await notion_client.retrieve_page_markdown(page_id)
         return {"success": True, "markdown": result.get("markdown", ""), "page_id": page_id}
     except Exception as e:
@@ -1628,6 +2276,7 @@ async def update_page_markdown_rest(page_id: str, markdown: str = Body(..., embe
     """Update page via markdown."""
     try:
         initialize_notion_client()
+        assert notion_client is not None, "Notion client failed to initialize"
         result = await notion_client.update_page_markdown(page_id, markdown)
         return {"success": True, "result": result}
     except Exception as e:
@@ -1639,6 +2288,7 @@ async def update_database_schema_rest(database_id: str, data: dict[str, Any] = B
     """Update database properties."""
     try:
         initialize_notion_client()
+        assert notion_client is not None, "Notion client failed to initialize"
         result = await notion_client.update_database_schema(database_id, **data)
         return {"success": True, "result": result}
     except Exception as e:
@@ -1662,8 +2312,7 @@ async def main() -> None:
     # This allows the server to start even if NOTION_TOKEN isn't set yet
     # Tools will initialize and return appropriate errors if token is missing
 
-    # Mount the MCP app to our custom FastAPI app
-    app.mount("/mcp", mcp.http_app)
+    # MCP sub-app is mounted at module import (see mcp_app above).
 
     # Run the unified server
     await run_server_async(mcp, http_app=app, server_name="notion-mcp")
