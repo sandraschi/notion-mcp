@@ -27,13 +27,25 @@ test:
 mcpb-pack:
     powershell.exe -NoProfile -File '{{justfile_directory()}}\scripts\mcpb-pack.ps1'
 
+# Playwright e2e (backend + frontend webServers, chromium headless shell)
+e2e:
+    Set-Location '{{justfile_directory()}}\web_sota'; bun run test:e2e
+
+# CUA webapp test (pre-Tauri browser walk: stack start + title-matching nav)
+cua-webapp-test:
+    powershell.exe -NoProfile -File '{{justfile_directory()}}\scripts\just\cua-webapp-test.ps1'
+
+# CUA NSIS test (install -> launch -> nav walk -> uninstall; needs installer)
+cua-nsis-test:
+    powershell.exe -NoProfile -File '{{justfile_directory()}}\scripts\just\cua-nsis-test.ps1'
+
 # Biome lint frontend
 lint-web:
-    Set-Location '{{justfile_directory()}}\web_sota'; npx @biomejs/biome ci .
+    Set-Location '{{justfile_directory()}}\web_sota'; bunx @biomejs/biome ci .
 
 # Biome auto-fix frontend
 fix-web:
-    Set-Location '{{justfile_directory()}}\web_sota'; npx @biomejs/biome check --write .
+    Set-Location '{{justfile_directory()}}\web_sota'; bunx @biomejs/biome check --write .
 
 # --- Hardening ---
 
@@ -45,7 +57,7 @@ check-sec:
 
 # Install Python + frontend deps (run after git clone)
 bootstrap:
-    Set-Location '{{justfile_directory()}}'; uv sync --extra dev; if (Test-Path '{{justfile_directory()}}\web_sota') { Push-Location '{{justfile_directory()}}\web_sota'; npm install; Pop-Location }; if (Get-Command pre-commit -ErrorAction SilentlyContinue) { pre-commit install } else { Write-Host 'pre-commit not on PATH, skipping hook install' }; Write-Host "Bootstrap complete. Run: just dev or start.bat" -ForegroundColor Green
+    Set-Location '{{justfile_directory()}}'; uv sync --extra dev; if (Test-Path '{{justfile_directory()}}\web_sota') { Push-Location '{{justfile_directory()}}\web_sota'; bun install; Pop-Location }; if (Get-Command pre-commit -ErrorAction SilentlyContinue) { pre-commit install } else { Write-Host 'pre-commit not on PATH, skipping hook install' }; Write-Host "Bootstrap complete. Run: just dev or start.bat" -ForegroundColor Green
 
 # Start backend only (HTTP mode)
 serve:

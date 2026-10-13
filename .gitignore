@@ -140,3 +140,8 @@ reports/
 # Local runtime data: Notion token (plaintext!), workspace export JSONs.
 # Never commit — set via webapp Settings or NOTION_TOKEN env.
 exports/
+
+# Playwright e2e artifacts (regenerable per run)
+web_sota/test-results/
+web_sota/playwright-report/
+web_sota/blob-report/
